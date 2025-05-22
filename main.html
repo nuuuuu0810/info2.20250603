@@ -821,10 +821,7 @@
 <script>
         document.addEventListener('DOMContentLoaded', () => {
             const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-            if (/android/i.test(userAgent) || /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
-                window.location.href = "mobile.html";
-                return;
-            }
+
 
             const tocLinks = document.querySelectorAll('.table-of-contents a');
             // ▼▼▼ 変更箇所: .content-title も含める ▼▼▼
