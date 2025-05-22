@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スライドタイトル - 縦中央・可変長下線</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: "Yu Gothic", "游ゴシック体", "YuGothic", "游ゴシック", "ヒラギノ角ゴ ProN W3", "Hiragino Kaku Gothic ProN", "メイリオ", Meiryo, sans-serif;
+            background-color: #fff;
+            display: flex; /* Flexbox を使用 */
+            align-items: center; /* 垂直方向の中央揃え */
+            justify-content: flex-start; /* 水平方向は左から開始 */
+            min-height: 110vh; /* 画面全体の高さを確保 */
+            padding-left: 0; /* 左端から開始するため、左パディングは0 */
+            /* もし画面左端から少し内側にしたい場合は、ここにパディングを設定します */
+            /*例: padding-left: 50px; */
+            box-sizing: border-box;
+        }
+
+        .slide-title-container {
+            display: flex;
+            align-items: baseline;
+            border-bottom: 2px solid #0059b3;
+            padding-bottom: 5px;
+            width: 85vw; /* 画面幅の80% (ビューポート幅の80%) */
+            /* margin-left は0 (justify-content: flex-start により左端に配置) */
+            /* 上下マージンは align-items: center で中央になるので不要 */
+        }
+
+        .slide-number {
+            font-size: 35px;
+            color: #0059b3;
+            margin-left: 5%;
+            margin-right: 3%;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .slide-title {
+            font-size: 35px;
+            color: #000;
+            font-weight: 600;
+            margin: 0;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-title-container">
+        <span class="slide-number">1</span>
+        <h1 class="slide-title">ソートとは</h1>
+    </div>
+</body>
+</html>

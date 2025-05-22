@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>情報科教育法Ⅱ 模擬授業 ソート</title>
+    <style>
+        body {
+            margin: 20px; /* ページ全体の余白 (任意) */
+            font-family: sans-serif;
+            background-color: #f0f0f0; /* 背景色 (任意) */
+        }
+
+        /* 親要素のスタイル */
+        .iframe-wrapper {
+            /*
+             * ここで親要素の幅を決定します。
+             * 例:
+             * width: 80%; /* ビューポート幅の80% */
+             /*height: 100%;*/
+            margin: 20px auto; /* 中央寄せ (任意) */
+        }
+
+        /* iframeを格納するコンテナ */
+        .iframe-container {
+            /* 親要素の幅に対して、アスペクト比 1440:825 を維持 */
+            aspect-ratio: 1440 / 825;
+            overflow: hidden; /* スケールしたiframeがはみ出ないように */
+            position: relative; /* iframeを絶対配置する際の基準点 */
+            background-color: #eee; /* iframe読み込み中の背景 (任意) */
+        }
+
+        /* iframe本体のスタイル */
+        .iframe-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1440px; /* iframeコンテンツの本来の幅 */
+            height: 825px; /* iframeコンテンツの本来の高さ */
+            border: none;  /* 不要な境界線を削除 */
+            transform-origin: 0 0; /* スケーリングの基点を左上に設定 */
+            /* transform: scale() はJavaScriptで動的に設定されます */
+        }
+    </style>
+</head>
+<body>
+
+
+
+    <div class="iframe-wrapper">
+        <div class="iframe-container">
+          <iframe src="main.html"></iframe>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.querySelector('.iframe-container');
+            const iframe = container.querySelector('iframe');
+
+            // iframeコンテンツの本来の幅 (この値に基づいてスケール計算)
+            const contentOriginalWidth = 1440;
+            // const contentOriginalHeight = 825; // アスペクト比はCSSのaspect-ratioで担保
+
+            function adjustIframeScale() {
+                if (!container || !iframe) {
+                    console.error('Iframe container or iframe element not found.');
+                    return;
+                }
+
+                // コンテナの現在の実際の幅を取得
+                const containerWidth = container.offsetWidth;
+
+                // スケール率を計算 (コンテナの幅 / iframeコンテンツの本来の幅)
+                const scaleFactor = containerWidth / contentOriginalWidth;
+
+                // iframeにスケールを適用
+                iframe.style.transform = `scale(${scaleFactor})`;
+            }
+
+            // iframeのコンテンツが完全に読み込まれた後に一度スケール調整を実行
+            // (src="about:blank" の場合は即座に発火するが、実際のコンテンツでは重要)
+            if (iframe) {
+                iframe.addEventListener('load', function() {
+                    console.log('Iframe content loaded. Adjusting scale.');
+                    adjustIframeScale();
+                });
+            }
+
+            // 初期表示時にスケール調整
+            // (DOMContentLoaded後、かつiframeのloadイベント前にも一度実行しておく)
+            adjustIframeScale();
+
+            // ウィンドウがリサイズされた時にもスケールを再調整
+            window.addEventListener('resize', adjustIframeScale);
+
+            // 親要素(.iframe-wrapper や .iframe-container)のサイズが
+            // ウィンドウリサイズ以外で動的に変更される可能性がある場合は、
+            // ResizeObserver を使用すると、より正確に追従できます。
+            if (typeof ResizeObserver !== 'undefined') {
+                const resizeObserver = new ResizeObserver(entries => {
+                    // 通常、entries[0]が監視対象の要素
+                    console.log('Container resized by ResizeObserver. Adjusting scale.');
+                    adjustIframeScale();
+                });
+                resizeObserver.observe(container); // .iframe-container のサイズ変更を監視
+            } else {
+                // ResizeObserverがサポートされていないブラウザ向けのフォールバック
+                // (window.addEventListener('resize', adjustIframeScale) が主なトリガーとなる)
+                console.warn('ResizeObserver is not supported in this browser. Scale adjustments will primarily rely on window resize events.');
+            }
+
+            // iframeのsrcを動的に変更する場合の例 (テスト用)
+            // setTimeout(() => {
+            //    iframe.src = "https://www.openstreetmap.org/export/embed.html?bbox=-0.004017949104309083%2C51.47612752641776%2C0.0013055795431137087%2C51.478569861898606&layer=mapnik";
+            // }, 3000);
+        });
+    </script>
+
+</body>
+</html>

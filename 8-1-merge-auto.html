@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>マージソート 選択</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* --- スタイル 1: Flexboxレイアウト --- */
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        #main {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .left-pane {
+            width: 55%;
+            padding: 20px;
+            box-sizing: border-box;
+            border-right: 1px solid #FFF;
+            background-color: #FFFFFF;
+            overflow-y: auto;
+        }
+
+        .left-pane h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .left-pane p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .right-pane {
+            width: 45%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #FFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            /* コントロールとソートモジュール間のスペース (参照コード適用) */
+            overflow-y: auto;
+            height: 100%;
+        }
+
+        /* --- コントロールパネルのスタイル (参照コード適用) --- */
+        .controls-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 750px;
+            /* マージソート側の sort-module-wrapper に合わせる */
+            box-sizing: border-box;
+        }
+
+        .controls-container button {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            background-color: #f0f0f0;
+            cursor: pointer;
+            font-weight: normal;
+            font-size: 0.9em;
+            transition: background-color 0.2s ease;
+        }
+
+        .controls-container button:hover:not(:disabled) {
+            /* :not(:disabled) を追加 */
+            background-color: #e0e0e0;
+        }
+
+        .controls-container button:disabled {
+            background-color: #f5f5f5;
+            color: #aaa;
+            cursor: not-allowed;
+            border-color: #ddd;
+        }
+
+        .controls-container label {
+            font-size: 0.9em;
+            color: #333;
+            margin-left: 5px;
+            /* 参照より少し調整 */
+        }
+
+        #speed-slider {
+            /* ID指定 */
+            flex-grow: 1;
+            max-width: 180px;
+            margin: 0 5px;
+            cursor: pointer;
+        }
+
+        #speed-slider:disabled {
+            cursor: not-allowed;
+        }
+
+        #speed-value-display {
+            /* ID指定 */
+            min-width: 35px;
+            /* マージソートの "s" を含むため少し広げる */
+            text-align: right;
+            font-size: 0.9em;
+            color: #333;
+        }
+
+        .sort-module-wrapper {
+            width: 100%;
+            max-width: 750px;
+            /* 追加 */
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-left: 30px;
+            /* 元の値を維持 */
+            height: 80vw;
+            /* ビューポート基準で最小高さを確保しつつコントロール分を引く */
+            overflow: hidden;
+            /* 内部のスクロールは各コンテナに任せる */
+        }
+
+
+        .pane-title {
+            font-size: 1.6em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            text-align: center;
+            width: 100%;
+        }
+
+
+        /* --- マージソート 手動ステップ --- */
+        #merge_main-app-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 20px;
+            overflow-y: auto;
+            /* ステップが多い場合にスクロール */
+            flex-grow: 1;
+            /* 残りの高さを埋める */
+        }
+
+        #merge_sort-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+            margin-right: auto;
+            /* 元のスタイル */
+            width: 100%;
+        }
+
+        .step-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0;
+            justify-content: flex-start;
+            min-height: 45px;
+            opacity: 1;
+            visibility: visible;
+            height: auto;
+            transition: opacity 0.5s ease-in-out, visibility 0s linear 0s, height 0.5s ease-in-out, margin-bottom 0.5s ease-in-out;
+            position: relative;
+            box-sizing: border-box;
+            padding: 0;
+            width: 100%;
+        }
+
+        .step-row:not(.visible) {
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+            visibility: hidden;
+            pointer-events: none;
+            margin-bottom: 0;
+            transition: opacity 0.3s ease-out, height 0.3s ease-out, margin-bottom 0.3s ease-out, visibility 0s linear 0.3s;
+        }
+
+        .step-row.visible {
+            opacity: 1;
+            height: auto;
+            margin-bottom: 4px;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .initial-array-row.visible {
+            margin-bottom: 8px;
+        }
+
+        .number-squares {
+            display: flex;
+            gap: 6px;
+            margin-right: 10px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            /* 参照コード適用 */
+            padding-bottom: 5px;
+            /* 参照コード適用 */
+        }
+
+        .number-element {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            cursor: default;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            text-align: center;
+            text-align-last: center;
+            transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease-out, opacity 0.2s ease;
+        }
+
+        .number-element option {
+            background-color: white;
+            color: black;
+        }
+
+        /* --- マージソート用 状態クラス --- */
+        .number-element.state-interactive-to-merge,
+        .bar_item.state-interactive-to-merge {
+            background-color: #FFF352;
+            /* Light Yellow */
+            border-color: #E6DB4A;
+            color: #333;
+            cursor: pointer;
+            /*background-color: #FFF352;*/
+            /* Light Yellow */
+            /*
+            border-color: #E6DB4A;
+            color: #333;*/
+        }
+
+        .number-element.state-interactive-to-merge {
+            cursor: pointer;
+        }
+
+        .number-element.state-part-of-merged,
+        .bar_item.state-part-of-merged {
+            /*
+            background-color: #8CE3FE;
+            /* Light Blue */
+            /*
+            border-color: #7bc8e2;*/
+            background-color: #FFF352;
+            /* Light Yellow */
+            border-color: #E6DB4A;
+            color: #333;
+            cursor: pointer;
+
+        }
+
+        .number-element.state-untouched-this-pass,
+        .bar_item.state-untouched-this-pass {
+            background-color: #cccccc;
+            /* Grey */
+            border-color: #b3b3b3;
+        }
+
+        .number-element.state-untouched-this-pass:disabled {
+            background-color: #cccccc;
+            border-color: #b3b3b3;
+        }
+
+        .number-element.state-initial,
+        .bar_item.state-initial,
+        .number-element.state-final-orange,
+        .bar_item.state-final-orange {
+            background-color: #FFC107;
+            /* Amber */
+            border-color: #FFA000;
+            color: black;
+            font-weight: bold;
+        }
+
+        .number-element.state-comparing-left,
+        .bar_item.state-comparing-left {
+            background-color: #FFF352;
+            /* Light Yellow */
+            border-color: #E6DB4A;
+            color: #333;
+            cursor: pointer;
+            /*
+            background-color: #FFD700 !important;
+            border: 2px solid #E6C200 !important;
+            color: #333 !important;
+            transform: scale(1.1);
+            z-index: 10;
+            */
+        }
+
+        .number-element.state-comparing-right,
+        .bar_item.state-comparing-right {
+            background-color: #FFF352;
+            /* Light Yellow */
+            border-color: #E6DB4A;
+            color: #333;
+            cursor: pointer;
+            /*
+            background-color: #FFA500 !important;
+            border: 2px solid #E69500 !important;
+            color: #333 !important;
+            transform: scale(1.1);
+            z-index: 10;
+            */
+        }
+
+        .number-element.state-selected-for-target,
+        /* For the target element in the row/bar just after selection */
+        .bar_item.state-selected-for-target {
+            background-color: #FFF352;
+            /* Light Yellow */
+            border-color: #E6DB4A;
+            color: #333;
+            cursor: pointer;
+            /*
+            background-color: #ADFF2F !important;
+            /* GreenYellow */
+            /*
+            border-color: #9CDD22 !important;
+            color: #333 !important;
+            animation: pulse-select 0.25s ease-in-out;*/
+        }
+
+        @keyframes pulse-select {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.15);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .number-element.state-source-used,
+        .bar_item.state-source-used {
+            background-color: #E0E0E0 !important;
+            /* Lighter Grey for used source */
+            border-color: #C0C0C0 !important;
+            color: #666 !important;
+            opacity: 0.6;
+        }
+
+        .number-element:disabled {
+            opacity: 1;
+            cursor: default;
+        }
+
+        .number-element:disabled::-ms-expand {
+            display: none;
+        }
+
+        .execute-btn {
+            background-color: #212121;
+            color: white;
+            border: 1px solid #000;
+            width: 38px;
+            height: 38px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            transition: background-color 0.2s ease;
+            padding: 0;
+            flex-shrink: 0;
+            cursor: pointer;
+            margin-right: 12px;
+            /* Space before status text if any */
+        }
+
+        .execute-btn svg {
+            fill: white;
+            width: 16px;
+            height: 16px;
+            display: block;
+        }
+
+        .execute-btn:disabled {
+            background-color: #666666;
+            border-color: #555555;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .execute-btn:disabled svg {
+            fill: #cccccc;
+        }
+
+        .status-text {
+            font-size: 1.0em;
+            font-weight: bold;
+            min-width: 60px;
+            text-align: left;
+            line-height: 40px;
+            flex-shrink: 0;
+        }
+
+        .status-ok {
+            color: #2ecc40;
+        }
+
+        .status-error {
+            color: #ff4136;
+        }
+
+        .status-complete {
+            color: #2ecc40;
+        }
+
+        .empty-array-message {
+            padding: 10px;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #555;
+            width: 100%;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+
+
+        #sync_bar_graph_container {
+            display: flex;
+            width: 100%;
+            min-height: 200px;
+            max-height: 250px;
+            padding: 10px 0;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+
+        #bar_items_wrapper {
+            display: flex;
+            gap: 5px;
+            align-items: flex-end;
+            position: relative;
+            overflow-x: auto;
+            padding: 5px;
+            width: 100%;
+        }
+
+        .bar_item {
+            width: 40px;
+            text-align: center;
+            border: 1px solid #d0d0d0;
+            background-color: #f0f0f0;
+            font-weight: bold;
+            font-size: 1em;
+            color: #333;
+            /* Default color for text, can be overridden by state */
+            box-sizing: border-box;
+            position: relative;
+            --value: 1;
+            height: calc(25px + (var(--value) * 15px));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background-color 0.2s ease, border-color 0.2s ease, height 0.2s ease, transform 0.15s ease-out, opacity 0.2s ease;
+        }
+
+        .bar_item.state-comparing-left,
+        .bar_item.state-comparing-right {
+            border-width: 2px !important;
+            transform: scale(1.05);
+            /* Ensure bar also scales */
+            z-index: 5;
+            /* Ensure bar is also above others if overlapping slightly */
+        }
+
+        .bar_item.state-selected-for-target {
+            animation: pulse-select 0.25s ease-in-out;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="main">
+        <div class="left-pane">
+            <img src="merge.png" alt="merge" width="98%">
+        </div>
+        <div class="right-pane">
+            <div class="controls-container">
+                <button id="auto-sort-btn">実行</button>
+                <button id="reset-sort-btn">リセット</button>
+                <label for="speed-slider">速度:</label>
+                <input type="range" id="speed-slider" min="150" max="3000" value="1500" step="150">
+                <span id="speed-value-display">×1.0</span>
+            </div>
+            <div class="sort-module-wrapper">
+                <div id="sync_bar_graph_container">
+                    <div id="bar_items_wrapper">
+                        <!-- JavaScriptで棒グラフ要素を動的に生成 -->
+                    </div>
+                </div>
+                <div id="merge_main-app-container">
+                    <div id="merge_sort-container">
+                        <!-- JavaScript will populate this area -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Global State & Variable Definitions (mostly same) ---
+        let sharedInitialArray = [];
+        let merge_initialArray = [];
+        let merge_currentArray = []; // Represents the state of the array *after the last completed major merge step*
+        let merge_stepsDefinition = [];
+        let merge_currentStepIndex = 0; // Index for merge_stepsDefinition (major steps)
+        let merge_allPossibleOptionsForSelect = [];
+
+        const merge_sortContainer = document.getElementById('merge_sort-container');
+        let merge_allRowsElements = [];
+        let merge_allNumberElementsInRows = []; // Stores the actual <select> DOM elements for each row
+        let merge_allExecuteButtons = [];
+        let merge_allStatusTexts = [];
+
+        const barGraphItemsWrapper = document.getElementById('bar_items_wrapper');
+
+        let isAutoRunning = false;
+        let isPaused = false;
+        let autoRunSpeed = 1500; // Milliseconds for one "major" step's total animation time approx.
+        let autoRunTimeoutId = null;
+
+        // --- State for internal sub-steps of a single merge operation ---
+        let currentMergeOpState = {
+            isActive: false,        // Is a merge operation currently in sub-step progress?
+            lo: 0, mid: 0, hi: 0, // Range of the current merge operation
+            leftSubArray: [], rightSubArray: [],
+            leftIdx: 0, rightIdx: 0,         // Current indices for left/right sub-arrays
+            mergeResultSegment: [],          // Stores the merged result for lo-hi segment as it's built
+            mergeTargetIdx: 0,      // Current write index into mergeResultSegment (relative to 0)
+            status: 'idle',         // 'comparing', 'placing_left', 'placing_right', 'finishing_left', 'finishing_right', 'done'
+            lastActionDelay: 0      // Delay used for the last sub-action
+        };
+
+        let autoSortBtn, resetSortBtn, speedSlider, speedValueDisplay;
+
+        // --- Core Functions (renderBarGraph, merge_createSelectElement, etc.) ---
+        function renderBarGraph(arr, elementStates = []) {
+            if (barGraphItemsWrapper.children.length !== arr.length && arr.length > 0) {
+                barGraphItemsWrapper.innerHTML = '';
+                arr.forEach((value, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'bar_item';
+                    item.id = `bar_item-${index}`;
+                    barGraphItemsWrapper.appendChild(item);
+                });
+            } else if (arr.length === 0) {
+                barGraphItemsWrapper.innerHTML = '';
+            }
+
+            arr.forEach((value, index) => {
+                const item = document.getElementById(`bar_item-${index}`);
+                if (!item) return;
+
+                if (item.textContent !== String(value)) item.textContent = String(value);
+                item.style.setProperty('--value', value);
+
+                const classesToRemove = [];
+                for (const cls of item.classList) {
+                    if (cls.startsWith('state-')) {
+                        classesToRemove.push(cls);
+                    }
+                }
+                if (classesToRemove.length > 0) {
+                    item.classList.remove(...classesToRemove);
+                }
+
+                if (elementStates && elementStates[index]) {
+                    item.classList.add(elementStates[index]);
+                } else if (arr.length > 0) {
+                    item.classList.add('state-untouched-this-pass');
+                }
+            });
+        }
+
+        function merge_createSelectElement(id, value, optionsArray, stateClasses, isDisabled) {
+            const select = document.createElement('select');
+            select.id = id;
+            select.className = `number-element ${stateClasses}`;
+            select.disabled = isDisabled;
+            const stringValueToSelect = (value === undefined || value === null || value === '') ? '' : String(value);
+
+            const uniqueStringOptions = [...new Set(optionsArray.map(String))];
+            const sortedOptions = uniqueStringOptions.sort((a, b) => Number(a) - Number(b));
+
+            if (stringValueToSelect !== '' && !sortedOptions.includes(stringValueToSelect)) {
+                sortedOptions.push(stringValueToSelect);
+                sortedOptions.sort((a, b) => Number(a) - Number(b));
+            }
+
+            sortedOptions.forEach(optVal => {
+                if (optVal === '' && stringValueToSelect !== '') return;
+                const option = document.createElement('option');
+                option.value = String(optVal);
+                option.textContent = String(optVal);
+                select.appendChild(option);
+            });
+
+            select.value = stringValueToSelect;
+
+            if (select.value !== stringValueToSelect && select.options.length > 0) {
+                for (let i = 0; i < select.options.length; i++) {
+                    if (select.options[i].textContent === stringValueToSelect) {
+                        select.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            if (select.options.length === 0 && stringValueToSelect !== '') {
+                const option = document.createElement('option');
+                option.value = stringValueToSelect;
+                option.textContent = stringValueToSelect;
+                select.appendChild(option);
+                select.value = stringValueToSelect;
+            }
+            return select;
+        }
+
+        function merge_generateMergeSteps(arrayLength) {
+            const steps = [];
+            const n = arrayLength;
+            if (n <= 1) return [];
+
+            for (let sz = 1; sz < n; sz = sz * 2) {
+                for (let lo = 0; lo < n - sz; lo += sz * 2) {
+                    const mid = lo + sz - 1;
+                    const hi = Math.min(lo + sz + sz - 1, n - 1);
+                    steps.push({ lo, mid, hi });
+                }
+            }
+            return steps;
+        }
+
+        function merge_mergeTwoSortedArrays(arr1, arr2) {
+            const merged = []; let i = 0, j = 0;
+            while (i < arr1.length && j < arr2.length) {
+                if (Number(arr1[i]) <= Number(arr2[j])) merged.push(arr1[i++]);
+                else merged.push(arr2[j++]);
+            }
+            while (i < arr1.length) merged.push(arr1[i++]);
+            while (j < arr2.length) merged.push(arr2[j++]);
+            return merged;
+        }
+
+        function merge_generateRows(numSteps) {
+            merge_sortContainer.innerHTML = '';
+            merge_allRowsElements = [];
+            merge_allNumberElementsInRows = [];
+            merge_allExecuteButtons = [];
+            merge_allStatusTexts = [];
+            const numElements = merge_initialArray.length;
+            merge_allPossibleOptionsForSelect = [...new Set(merge_initialArray.map(String))].sort((a, b) => Number(a) - Number(b));
+
+            if (numElements > 0) {
+                const initialRowDiv = document.createElement('div');
+                initialRowDiv.className = 'step-row visible initial-array-row';
+                const initialSquaresDiv = document.createElement('div');
+                initialSquaresDiv.className = 'number-squares';
+                merge_initialArray.forEach((val, index) => {
+                    initialSquaresDiv.appendChild(merge_createSelectElement(`initial-el-${index}`, val, [val], 'state-initial', true));
+                });
+                initialRowDiv.appendChild(initialSquaresDiv);
+                if (numSteps === 0) { // Already sorted (0 or 1 element)
+                    const statusSpan = document.createElement('span');
+                    statusSpan.className = 'status-text status-complete'; statusSpan.textContent = '完了';
+                    initialRowDiv.appendChild(statusSpan);
+                }
+                merge_sortContainer.appendChild(initialRowDiv);
+                renderBarGraph([...merge_currentArray], merge_currentArray.map(() => 'state-initial'));
+            } else {
+                const emptyMsg = document.createElement('div');
+                emptyMsg.className = 'empty-array-message';
+                emptyMsg.textContent = '配列が空です。';
+                merge_sortContainer.appendChild(emptyMsg);
+                renderBarGraph([], []);
+                return;
+            }
+
+            for (let i = 0; i < numSteps; i++) {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'step-row'; rowDiv.id = `merge-step-row-${i}`;
+                const squaresDiv = document.createElement('div');
+                squaresDiv.className = 'number-squares';
+                const currentRowSelects = [];
+                for (let j = 0; j < numElements; j++) {
+                    const val = merge_currentArray[j];
+                    const el = merge_createSelectElement(`merge-el-${i}-${j}`, val, [String(val)], 'state-untouched-this-pass', true);
+                    squaresDiv.appendChild(el);
+                    currentRowSelects.push(el);
+                }
+                merge_allNumberElementsInRows.push(currentRowSelects);
+                rowDiv.appendChild(squaresDiv);
+
+                const button = document.createElement('button');
+                button.className = 'execute-btn';
+                button.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>';
+                button.addEventListener('click', merge_handleExecute);
+                button.dataset.stepIndex = i;
+                merge_allExecuteButtons[i] = button;
+                rowDiv.appendChild(button);
+
+                const statusSpan = document.createElement('span');
+                statusSpan.className = 'status-text';
+                merge_allStatusTexts[i] = statusSpan;
+                rowDiv.appendChild(statusSpan);
+
+                merge_sortContainer.appendChild(rowDiv);
+                merge_allRowsElements.push(rowDiv);
+            }
+        }
+
+
+        function merge_prepareStepUI(stepIdx, arrayToDisplay) {
+            if (stepIdx >= merge_stepsDefinition.length || stepIdx < 0) return;
+            const { lo, mid, hi } = merge_stepsDefinition[stepIdx];
+            if (merge_allRowsElements[stepIdx]) merge_allRowsElements[stepIdx].classList.add('visible');
+
+            const currentStepSelects = merge_allNumberElementsInRows[stepIdx];
+            currentStepSelects.forEach((selectEl, colIdx) => {
+                let value = arrayToDisplay[colIdx];
+                let state = (colIdx >= lo && colIdx <= hi) ? 'state-interactive-to-merge' : 'state-untouched-this-pass';
+                let opts = (colIdx >= lo && colIdx <= hi && !isAutoRunning) ? merge_allPossibleOptionsForSelect : [String(value)];
+                let disabled = isAutoRunning || !(colIdx >= lo && colIdx <= hi) || merge_currentStepIndex !== stepIdx;
+
+                const newEl = merge_createSelectElement(selectEl.id, value, opts, state, disabled);
+                selectEl.parentNode.replaceChild(newEl, selectEl);
+                currentStepSelects[colIdx] = newEl;
+            });
+
+            const barStates = arrayToDisplay.map((_, idx) => (idx >= lo && idx <= hi) ? 'state-interactive-to-merge' : 'state-untouched-this-pass');
+            renderBarGraph([...arrayToDisplay], barStates);
+
+            if (merge_allExecuteButtons[stepIdx]) merge_allExecuteButtons[stepIdx].disabled = isAutoRunning || merge_currentStepIndex !== stepIdx;
+            if (merge_allStatusTexts[stepIdx]) { merge_allStatusTexts[stepIdx].textContent = ''; merge_allStatusTexts[stepIdx].className = 'status-text'; }
+        }
+
+        function merge_displayFinalSortedState(finalArray) {
+            const numElements = finalArray.length;
+            if (numElements === 0 && merge_sortContainer.querySelector('.empty-array-message')) {
+                merge_sortContainer.querySelector('.empty-array-message').textContent = "完了 (空の配列)";
+                renderBarGraph([], []);
+                return;
+            }
+
+            let targetRowIdx = merge_stepsDefinition.length - 1;
+            let targetSelects;
+            let targetStatusText;
+            let targetExecuteButton;
+
+            if (targetRowIdx >= 0 && targetRowIdx < merge_allNumberElementsInRows.length) {
+                if (merge_allRowsElements[targetRowIdx]) {
+                    merge_allRowsElements[targetRowIdx].classList.add('visible');
+                }
+                targetSelects = merge_allNumberElementsInRows[targetRowIdx];
+                targetStatusText = merge_allStatusTexts[targetRowIdx];
+                targetExecuteButton = merge_allExecuteButtons[targetRowIdx];
+            } else if (numElements > 0) {
+                const initialRow = merge_sortContainer.querySelector('.initial-array-row');
+                if (initialRow) {
+                    targetSelects = Array.from(initialRow.querySelectorAll('.number-element'));
+                    let statusSpan = initialRow.querySelector('.status-text');
+                    if (!statusSpan) {
+                        statusSpan = document.createElement('span');
+                        statusSpan.className = 'status-text';
+                        const squaresDiv = initialRow.querySelector('.number-squares');
+                        if (squaresDiv) squaresDiv.insertAdjacentElement('afterend', statusSpan);
+                    }
+                    targetStatusText = statusSpan;
+                }
+            }
+
+            if (targetSelects) {
+                targetSelects.forEach((select, colIndex) => {
+                    if (colIndex < finalArray.length) {
+                        const finalValue = finalArray[colIndex];
+                        const newSelectEl = merge_createSelectElement(
+                            select.id, finalValue, [finalValue], 'state-final-orange', true
+                        );
+                        if (select.parentNode) {
+                            select.parentNode.replaceChild(newSelectEl, select);
+                        }
+                        if (targetRowIdx >= 0 && merge_allNumberElementsInRows[targetRowIdx] && merge_allNumberElementsInRows[targetRowIdx][colIndex]) {
+                            merge_allNumberElementsInRows[targetRowIdx][colIndex] = newSelectEl;
+                        }
+                    }
+                });
+            }
+
+            if (targetStatusText) {
+                targetStatusText.textContent = '完了';
+                targetStatusText.className = 'status-text status-complete';
+            }
+            if (targetExecuteButton) {
+                targetExecuteButton.disabled = true;
+            }
+            renderBarGraph([...finalArray], finalArray.map(() => 'state-final-orange'));
+        }
+        function merge_handleExecute(event) {
+            if (isAutoRunning) return;
+            const button = event.currentTarget;
+            const stepIdxOfButton = parseInt(button.dataset.stepIndex);
+            if (stepIdxOfButton !== merge_currentStepIndex) return;
+
+            const currentStatusText = merge_allStatusTexts[merge_currentStepIndex];
+            const selectsInCurrentRow = merge_allNumberElementsInRows[merge_currentStepIndex];
+            const mergeOp = merge_stepsDefinition[merge_currentStepIndex];
+            const { lo, mid, hi } = mergeOp;
+
+            const userSelectedValuesInMergeRange = [];
+            for (let i = lo; i <= hi; i++) {
+                const val = selectsInCurrentRow[i].value;
+                userSelectedValuesInMergeRange.push(val === "" ? null : Number(val));
+            }
+
+            const leftOperand = merge_currentArray.slice(lo, mid + 1);
+            const rightOperand = merge_currentArray.slice(mid + 1, hi + 1);
+            const correctlyMergedRange = merge_mergeTwoSortedArrays(leftOperand, rightOperand);
+
+            let isUserSetupCorrect = userSelectedValuesInMergeRange.length === correctlyMergedRange.length &&
+                userSelectedValuesInMergeRange.every((val, i) => val === correctlyMergedRange[i]);
+
+            if (isUserSetupCorrect) {
+                if (currentStatusText) { currentStatusText.textContent = 'OK'; currentStatusText.className = 'status-text status-ok'; }
+                button.disabled = true;
+                for (let i = 0; i < correctlyMergedRange.length; i++) merge_currentArray[lo + i] = correctlyMergedRange[i];
+
+                const barStates = [];
+                selectsInCurrentRow.forEach((sel, colIndex) => {
+                    const finalValue = merge_currentArray[colIndex];
+                    let cellState = (colIndex >= lo && colIndex <= hi) ? 'state-part-of-merged' : 'state-untouched-this-pass';
+                    barStates[colIndex] = cellState;
+                    const newSelectEl = merge_createSelectElement(sel.id, finalValue, [finalValue], cellState, true);
+                    sel.parentNode.replaceChild(newSelectEl, sel);
+                    selectsInCurrentRow[colIndex] = newSelectEl;
+                });
+                renderBarGraph([...merge_currentArray], barStates);
+                merge_currentStepIndex++;
+                if (merge_currentStepIndex < merge_stepsDefinition.length) merge_prepareStepUI(merge_currentStepIndex, merge_currentArray);
+                else { merge_displayFinalSortedState(merge_currentArray); if (autoSortBtn) autoSortBtn.disabled = true; }
+            } else {
+                if (currentStatusText) { currentStatusText.textContent = 'エラー'; currentStatusText.className = 'status-text status-error'; }
+            }
+        }
+        function disableAllManualControls() {
+            merge_allNumberElementsInRows.flat().forEach(selectEl => { if (selectEl) selectEl.disabled = true; });
+            merge_allExecuteButtons.forEach(btn => { if (btn) btn.disabled = true; });
+            document.querySelectorAll('#merge_sort-container select').forEach(sel => sel.disabled = true);
+        }
+
+        function autoExecuteCurrentStep() {
+            if (isPaused) return;
+
+            const op = currentMergeOpState;
+
+            if (!op.isActive) {
+                if (merge_currentStepIndex >= merge_stepsDefinition.length) {
+                    merge_displayFinalSortedState(merge_currentArray);
+                    completeAutoRun();
+                    return;
+                }
+                const { lo, mid, hi } = merge_stepsDefinition[merge_currentStepIndex];
+                op.isActive = true;
+                op.lo = lo; op.mid = mid; op.hi = hi;
+                op.leftSubArray = merge_currentArray.slice(lo, mid + 1);
+                op.rightSubArray = merge_currentArray.slice(mid + 1, hi + 1);
+                op.leftIdx = 0; op.rightIdx = 0;
+                op.mergeResultSegment = [];
+                op.mergeTargetIdx = 0;
+                op.status = 'comparing';
+
+                merge_prepareStepUI(merge_currentStepIndex, merge_currentArray);
+                disableAllManualControls();
+                if (merge_allRowsElements[merge_currentStepIndex]) {
+                    merge_allRowsElements[merge_currentStepIndex].classList.add('visible');
+                }
+            }
+
+            const currentStepSelects = merge_allNumberElementsInRows[merge_currentStepIndex];
+            const barGraphTempArray = [...merge_currentArray];
+            const barGraphTempStates = barGraphTempArray.map((_, i) =>
+                (i >= op.lo && i <= op.hi) ? 'state-interactive-to-merge' : 'state-untouched-this-pass'
+            );
+
+            for (let i = 0; i < op.mergeTargetIdx; i++) {
+                if (currentStepSelects && currentStepSelects[op.lo + i]) {
+                    const sEl = currentStepSelects[op.lo + i];
+                    const nEl = merge_createSelectElement(sEl.id, op.mergeResultSegment[i], [op.mergeResultSegment[i]], 'state-part-of-merged', true);
+                    sEl.parentNode.replaceChild(nEl, sEl); currentStepSelects[op.lo + i] = nEl;
+                }
+                barGraphTempArray[op.lo + i] = op.mergeResultSegment[i];
+                barGraphTempStates[op.lo + i] = 'state-part-of-merged';
+            }
+
+            let subStepDelay = Math.max(100, autoRunSpeed * 0.35);
+
+            if (op.status === 'comparing') {
+                if (op.leftIdx < op.leftSubArray.length && op.rightIdx < op.rightSubArray.length) {
+                    if (currentStepSelects && currentStepSelects[op.lo + op.leftIdx]) {
+                        const el = currentStepSelects[op.lo + op.leftIdx]; el.classList.add('state-comparing-left');
+                        setTimeout(() => el.classList.remove('state-comparing-left'), subStepDelay * 0.9);
+                    }
+                    if (currentStepSelects && currentStepSelects[op.mid + 1 + op.rightIdx]) {
+                        const el = currentStepSelects[op.mid + 1 + op.rightIdx]; el.classList.add('state-comparing-right');
+                        setTimeout(() => el.classList.remove('state-comparing-right'), subStepDelay * 0.9);
+                    }
+                    barGraphTempStates[op.lo + op.leftIdx] = 'state-comparing-left';
+                    barGraphTempStates[op.mid + 1 + op.rightIdx] = 'state-comparing-right';
+                    renderBarGraph(barGraphTempArray, barGraphTempStates);
+
+                    if (Number(op.leftSubArray[op.leftIdx]) <= Number(op.rightSubArray[op.rightIdx])) {
+                        op.status = 'placing_left';
+                    } else {
+                        op.status = 'placing_right';
+                    }
+                } else if (op.leftIdx < op.leftSubArray.length) {
+                    op.status = 'finishing_left';
+                } else if (op.rightIdx < op.rightSubArray.length) {
+                    op.status = 'finishing_right';
+                } else {
+                    op.status = 'done';
+                }
+            }
+
+            else if (op.status === 'placing_left') {
+                const val = op.leftSubArray[op.leftIdx];
+                op.mergeResultSegment.push(val);
+                if (currentStepSelects && currentStepSelects[op.lo + op.mergeTargetIdx]) {
+                    const el = currentStepSelects[op.lo + op.mergeTargetIdx];
+                    const newEl = merge_createSelectElement(el.id, val, [val], 'state-part-of-merged state-selected-for-target', true);
+                    el.parentNode.replaceChild(newEl, el); currentStepSelects[op.lo + op.mergeTargetIdx] = newEl;
+                    setTimeout(() => newEl.classList.remove('state-selected-for-target'), subStepDelay * 0.9);
+                }
+                if (currentStepSelects && currentStepSelects[op.lo + op.leftIdx]) {
+                    const srcEl = currentStepSelects[op.lo + op.leftIdx];
+                    const newSrcEl = merge_createSelectElement(srcEl.id, op.leftSubArray[op.leftIdx], [op.leftSubArray[op.leftIdx]], 'state-source-used', true);
+                    srcEl.parentNode.replaceChild(newSrcEl, srcEl); currentStepSelects[op.lo + op.leftIdx] = newSrcEl;
+                }
+                barGraphTempArray[op.lo + op.mergeTargetIdx] = val;
+                barGraphTempStates[op.lo + op.mergeTargetIdx] = 'state-selected-for-target';
+                barGraphTempStates[op.lo + op.leftIdx] = 'state-source-used';
+                renderBarGraph(barGraphTempArray, barGraphTempStates);
+                setTimeout(() => {
+                    const barItem = document.getElementById(`bar_item-${op.lo + op.mergeTargetIdx}`);
+                    if (barItem) barItem.classList.remove('state-selected-for-target');
+                    if (barItem) barItem.classList.add('state-part-of-merged');
+                }, subStepDelay * 0.9);
+
+
+                op.leftIdx++;
+                op.mergeTargetIdx++;
+                op.status = 'comparing';
+            }
+
+            else if (op.status === 'placing_right') {
+                const val = op.rightSubArray[op.rightIdx];
+                op.mergeResultSegment.push(val);
+                if (currentStepSelects && currentStepSelects[op.lo + op.mergeTargetIdx]) {
+                    const el = currentStepSelects[op.lo + op.mergeTargetIdx];
+                    const newEl = merge_createSelectElement(el.id, val, [val], 'state-part-of-merged state-selected-for-target', true);
+                    el.parentNode.replaceChild(newEl, el); currentStepSelects[op.lo + op.mergeTargetIdx] = newEl;
+                    setTimeout(() => newEl.classList.remove('state-selected-for-target'), subStepDelay * 0.9);
+                }
+                if (currentStepSelects && currentStepSelects[op.mid + 1 + op.rightIdx]) {
+                    const srcEl = currentStepSelects[op.mid + 1 + op.rightIdx];
+                    const newSrcEl = merge_createSelectElement(srcEl.id, op.rightSubArray[op.rightIdx], [op.rightSubArray[op.rightIdx]], 'state-source-used', true);
+                    srcEl.parentNode.replaceChild(newSrcEl, srcEl); currentStepSelects[op.mid + 1 + op.rightIdx] = newSrcEl;
+                }
+                barGraphTempArray[op.lo + op.mergeTargetIdx] = val;
+                barGraphTempStates[op.lo + op.mergeTargetIdx] = 'state-selected-for-target';
+                barGraphTempStates[op.mid + 1 + op.rightIdx] = 'state-source-used';
+                renderBarGraph(barGraphTempArray, barGraphTempStates);
+                setTimeout(() => {
+                    const barItem = document.getElementById(`bar_item-${op.lo + op.mergeTargetIdx}`);
+                    if (barItem) barItem.classList.remove('state-selected-for-target');
+                    if (barItem) barItem.classList.add('state-part-of-merged');
+                }, subStepDelay * 0.9);
+
+                op.rightIdx++;
+                op.mergeTargetIdx++;
+                op.status = 'comparing';
+            }
+
+            else if (op.status === 'finishing_left') {
+                if (op.leftIdx < op.leftSubArray.length) {
+                    const val = op.leftSubArray[op.leftIdx];
+                    op.mergeResultSegment.push(val);
+                    if (currentStepSelects && currentStepSelects[op.lo + op.mergeTargetIdx]) {
+                        const el = currentStepSelects[op.lo + op.mergeTargetIdx];
+                        const newEl = merge_createSelectElement(el.id, val, [val], 'state-part-of-merged state-selected-for-target', true);
+                        el.parentNode.replaceChild(newEl, el); currentStepSelects[op.lo + op.mergeTargetIdx] = newEl;
+                        setTimeout(() => newEl.classList.remove('state-selected-for-target'), subStepDelay * 0.9);
+                    }
+                    if (currentStepSelects && currentStepSelects[op.lo + op.leftIdx]) {
+                        const srcEl = currentStepSelects[op.lo + op.leftIdx];
+                        const newSrcEl = merge_createSelectElement(srcEl.id, op.leftSubArray[op.leftIdx], [op.leftSubArray[op.leftIdx]], 'state-source-used', true);
+                        srcEl.parentNode.replaceChild(newSrcEl, srcEl); currentStepSelects[op.lo + op.leftIdx] = newSrcEl;
+                    }
+                    barGraphTempArray[op.lo + op.mergeTargetIdx] = val;
+                    barGraphTempStates[op.lo + op.mergeTargetIdx] = 'state-selected-for-target';
+                    barGraphTempStates[op.lo + op.leftIdx] = 'state-source-used';
+                    renderBarGraph(barGraphTempArray, barGraphTempStates);
+                    setTimeout(() => {
+                        const barItem = document.getElementById(`bar_item-${op.lo + op.mergeTargetIdx}`);
+                        if (barItem) barItem.classList.remove('state-selected-for-target');
+                        if (barItem) barItem.classList.add('state-part-of-merged');
+                    }, subStepDelay * 0.9);
+
+                    op.leftIdx++;
+                    op.mergeTargetIdx++;
+                } else {
+                    op.status = 'done';
+                }
+            }
+
+            else if (op.status === 'finishing_right') {
+                if (op.rightIdx < op.rightSubArray.length) {
+                    const val = op.rightSubArray[op.rightIdx];
+                    op.mergeResultSegment.push(val);
+                    if (currentStepSelects && currentStepSelects[op.lo + op.mergeTargetIdx]) {
+                        const el = currentStepSelects[op.lo + op.mergeTargetIdx];
+                        const newEl = merge_createSelectElement(el.id, val, [val], 'state-part-of-merged state-selected-for-target', true);
+                        el.parentNode.replaceChild(newEl, el); currentStepSelects[op.lo + op.mergeTargetIdx] = newEl;
+                        setTimeout(() => newEl.classList.remove('state-selected-for-target'), subStepDelay * 0.9);
+                    }
+                    if (currentStepSelects && currentStepSelects[op.mid + 1 + op.rightIdx]) {
+                        const srcEl = currentStepSelects[op.mid + 1 + op.rightIdx];
+                        const newSrcEl = merge_createSelectElement(srcEl.id, op.rightSubArray[op.rightIdx], [op.rightSubArray[op.rightIdx]], 'state-source-used', true);
+                        srcEl.parentNode.replaceChild(newSrcEl, srcEl); currentStepSelects[op.mid + 1 + op.rightIdx] = newSrcEl;
+                    }
+                    barGraphTempArray[op.lo + op.mergeTargetIdx] = val;
+                    barGraphTempStates[op.lo + op.mergeTargetIdx] = 'state-selected-for-target';
+                    barGraphTempStates[op.mid + 1 + op.rightIdx] = 'state-source-used';
+                    renderBarGraph(barGraphTempArray, barGraphTempStates);
+                    setTimeout(() => {
+                        const barItem = document.getElementById(`bar_item-${op.lo + op.mergeTargetIdx}`);
+                        if (barItem) barItem.classList.remove('state-selected-for-target');
+                        if (barItem) barItem.classList.add('state-part-of-merged');
+                    }, subStepDelay * 0.9);
+
+                    op.rightIdx++;
+                    op.mergeTargetIdx++;
+                } else {
+                    op.status = 'done';
+                }
+            }
+
+
+            if (op.status === 'done') {
+                for (let i = 0; i < op.mergeResultSegment.length; i++) {
+                    merge_currentArray[op.lo + i] = op.mergeResultSegment[i];
+                }
+                const finalRowSelects = merge_allNumberElementsInRows[merge_currentStepIndex];
+                const finalBarStates = [];
+                finalRowSelects.forEach((sel, colIdx) => {
+                    const val = merge_currentArray[colIdx];
+                    const state = (colIdx >= op.lo && colIdx <= op.hi) ? 'state-part-of-merged' : 'state-untouched-this-pass';
+                    finalBarStates[colIdx] = state;
+                    const newEl = merge_createSelectElement(sel.id, val, [String(val)], state, true);
+                    sel.parentNode.replaceChild(newEl, sel);
+                    finalRowSelects[colIdx] = newEl;
+                });
+                renderBarGraph([...merge_currentArray], finalBarStates);
+                if (merge_allStatusTexts[merge_currentStepIndex]) {
+                    merge_allStatusTexts[merge_currentStepIndex].textContent = 'OK';
+                    merge_allStatusTexts[merge_currentStepIndex].className = 'status-text status-ok';
+                }
+
+                op.isActive = false;
+                merge_currentStepIndex++;
+                subStepDelay = autoRunSpeed * 0.5;
+            }
+
+            autoRunTimeoutId = setTimeout(autoExecuteCurrentStep, subStepDelay);
+        }
+
+        function startAutoSort() {
+            if (merge_initialArray.length === 0 || (merge_currentStepIndex >= merge_stepsDefinition.length && !currentMergeOpState.isActive && merge_initialArray.length > 0)) {
+                if (merge_initialArray.length > 0 && merge_stepsDefinition.length === 0 && !currentMergeOpState.isActive) {
+                    merge_displayFinalSortedState(merge_currentArray);
+                    completeAutoRun(true);
+                }
+                return;
+            }
+            isAutoRunning = true; isPaused = false;
+            if (autoSortBtn) autoSortBtn.textContent = '一時停止';
+            if (resetSortBtn) resetSortBtn.disabled = true;
+            if (speedSlider) speedSlider.disabled = true;
+            disableAllManualControls();
+
+            if (!currentMergeOpState.isActive) {
+                currentMergeOpState = { isActive: false, lo: 0, mid: 0, hi: 0, leftSubArray: [], rightSubArray: [], leftIdx: 0, rightIdx: 0, mergeResultSegment: [], mergeTargetIdx: 0, status: 'idle', lastActionDelay: 0 };
+            }
+            autoRunTimeoutId = setTimeout(autoExecuteCurrentStep, currentMergeOpState.isActive ? currentMergeOpState.lastActionDelay : autoRunSpeed * 0.2);
+        }
+        function pauseAutoSort() { if (!isAutoRunning || isPaused) return; isPaused = true; clearTimeout(autoRunTimeoutId); if (autoSortBtn) autoSortBtn.textContent = '再開'; }
+        function resumeAutoSort() { if (!isAutoRunning || !isPaused) return; isPaused = false; if (autoSortBtn) autoSortBtn.textContent = '一時停止'; autoRunTimeoutId = setTimeout(autoExecuteCurrentStep, currentMergeOpState.lastActionDelay || autoRunSpeed * 0.2); }
+        function handleAutoSortButtonClick() {
+            if (isAutoRunning) { if (isPaused) resumeAutoSort(); else pauseAutoSort(); }
+            else {
+                if (merge_currentStepIndex > 0 && !currentMergeOpState.isActive) {
+                    currentMergeOpState = { isActive: false, lo: 0, mid: 0, hi: 0, leftSubArray: [], rightSubArray: [], leftIdx: 0, rightIdx: 0, mergeResultSegment: [], mergeTargetIdx: 0, status: 'idle', lastActionDelay: 0 };
+                }
+                startAutoSort();
+            }
+        }
+        function completeAutoRun(instantly = false) {
+            isAutoRunning = false; isPaused = false;
+            if (autoSortBtn) { autoSortBtn.textContent = '完了'; autoSortBtn.disabled = true; }
+            if (resetSortBtn) resetSortBtn.disabled = false;
+            if (speedSlider) speedSlider.disabled = false;
+            currentMergeOpState.isActive = false;
+        }
+        function handleResetButtonClick() {
+            if (isAutoRunning) clearTimeout(autoRunTimeoutId);
+            isAutoRunning = false; isPaused = false; autoRunTimeoutId = null;
+            currentMergeOpState = { isActive: false, lo: 0, mid: 0, hi: 0, leftSubArray: [], rightSubArray: [], leftIdx: 0, rightIdx: 0, mergeResultSegment: [], mergeTargetIdx: 0, status: 'idle', lastActionDelay: 0 };
+            initializeAll();
+        }
+        function merge_initializeSortProcess() {
+            merge_initialArray = [...sharedInitialArray].map(item => Number(item) || 0);
+            merge_currentArray = [...merge_initialArray];
+            merge_stepsDefinition = merge_generateMergeSteps(merge_initialArray.length);
+            merge_currentStepIndex = 0;
+            currentMergeOpState = { isActive: false, lo: 0, mid: 0, hi: 0, leftSubArray: [], rightSubArray: [], leftIdx: 0, rightIdx: 0, mergeResultSegment: [], mergeTargetIdx: 0, status: 'idle', lastActionDelay: 0 };
+            merge_generateRows(merge_stepsDefinition.length);
+            if (merge_initialArray.length > 0) {
+                if (merge_stepsDefinition.length > 0) merge_prepareStepUI(0, merge_currentArray);
+                else merge_displayFinalSortedState(merge_currentArray);
+            }
+            if (autoSortBtn) {
+                autoSortBtn.textContent = '実行';
+                autoSortBtn.disabled = merge_initialArray.length === 0 || (merge_stepsDefinition.length === 0 && merge_initialArray.length > 0);
+            }
+            if (resetSortBtn) resetSortBtn.disabled = false;
+            if (speedSlider) speedSlider.disabled = (merge_initialArray.length === 0);
+        }
+        function initializeAll() {
+            sharedInitialArray = [5, 2, 8, 1, 4, 7, 3, 6];
+            // sharedInitialArray = [3,1,4,2];
+            merge_initializeSortProcess();
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            autoSortBtn = document.getElementById('auto-sort-btn');
+            resetSortBtn = document.getElementById('reset-sort-btn');
+            speedSlider = document.getElementById('speed-slider');
+            speedValueDisplay = document.getElementById('speed-value-display');
+            if (speedSlider && speedValueDisplay) {
+                speedSlider.value = autoRunSpeed;
+                speedValueDisplay.textContent = `×${(autoRunSpeed / 1500).toFixed(1)}`;
+                speedSlider.addEventListener('input', (e) => {
+                    autoRunSpeed = parseInt(e.target.value);
+                    speedValueDisplay.textContent = `×${(autoRunSpeed / 1500).toFixed(1)}`;
+                });
+            }
+            if (autoSortBtn) autoSortBtn.addEventListener('click', handleAutoSortButtonClick);
+            if (resetSortBtn) resetSortBtn.addEventListener('click', handleResetButtonClick);
+            initializeAll();
+        });
+    </script>
+
+</body>
+
+</html>

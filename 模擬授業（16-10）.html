@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>情報科教育法Ⅱ 模擬授業 ソート（16：10）</title>
+    <style>
+        body {
+            margin: 20px; /* ページ全体の余白 (任意) */
+            font-family: sans-serif;
+            background-color: #f0f0f0; /* 背景色 (任意) */
+            height: 100%;
+        }
+
+        /* 親要素のスタイル */
+        .iframe-wrapper {
+            width: 80%;
+            margin: 20px auto; /* 中央寄せ (任意) */
+        }
+
+        /* iframeを格納するコンテナ */
+        .iframe-container {
+            /* 親要素の幅に対して、アスペクト比 1440:825 を維持 */
+            aspect-ratio: 1440 / 825;
+            overflow: hidden; /* スケールしたiframeがはみ出ないように */
+            position: relative; /* iframeを絶対配置する際の基準点 */
+            background-color: #eee; /* iframe読み込み中の背景 (任意) */
+        }
+
+        /* iframe本体のスタイル */
+        .iframe-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1440px; /* iframeコンテンツの本来の幅 */
+            height: 825px; /* iframeコンテンツの本来の高さ */
+            border: none;  /* 不要な境界線を削除 */
+            transform-origin: 0 0; /* スケーリングの基点を左上に設定 */
+            /* transform: scale() はJavaScriptで動的に設定されます */
+        }
+    </style>
+</head>
+<body>
+    <div class="iframe-wrapper">
+        <div class="iframe-container">
+          <iframe src="main.html"></iframe>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.querySelector('.iframe-container');
+            const iframe = container.querySelector('iframe');
+            const contentOriginalWidth = 1440;
+
+            function adjustIframeScale() {
+                if (!container || !iframe) {
+                    console.error('Iframe container or iframe element not found.');
+                    return;
+                }
+                const containerWidth = container.offsetWidth;
+                if (containerWidth === 0) { // コンテナが非表示または幅0の場合は何もしない
+                    console.warn('Container width is 0. Skipping scale adjustment.');
+                    return;
+                }
+                const scaleFactor = containerWidth / contentOriginalWidth;
+                iframe.style.transform = `scale(${scaleFactor})`;
+                // console.log(`Container width: ${containerWidth}, Scale factor: ${scaleFactor}`);
+            }
+
+            if (iframe) {
+                iframe.addEventListener('load', function() {
+                    console.log('Iframe content loaded. Adjusting scale.');
+                    adjustIframeScale();
+                });
+                 // about:blank やキャッシュされたコンテンツの場合、loadイベントがDOMContentLoadedより早く発火することがある
+                // そのため、srcが設定されていれば初期調整を試みる
+                if (iframe.src && iframe.src !== 'about:blank') {
+                     // ただし、コンテンツのロード完了を待つのが基本
+                } else {
+                    // srcが空かabout:blankなら即調整
+                     adjustIframeScale();
+                }
+            }
+            
+            // 初期表示時にスケール調整 (DOM読み込み後)
+            adjustIframeScale();
+
+            window.addEventListener('resize', adjustIframeScale);
+
+            if (typeof ResizeObserver !== 'undefined') {
+                const resizeObserver = new ResizeObserver(entries => {
+                    console.log('Container resized by ResizeObserver. Adjusting scale.');
+                    adjustIframeScale();
+                });
+                resizeObserver.observe(container);
+            } else {
+                console.warn('ResizeObserver is not supported. Relying on window resize.');
+            }
+        });
+    </script>
+</body>
+</html>

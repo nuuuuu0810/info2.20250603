@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <title>共同編集付箋アプリ (Firebase版)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+  /* --- ここからCSS --- */
+body {
+  font-family: 'Arial', sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f4f4f4;
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* 画面全体の高さを使う */
+  overflow: hidden; /* FABボタン固定のため、bodyのスクロールは防ぐ */
+}
+header {
+  background-color: #039BE5; /* Firebaseカラーっぽく */
+  color: white;
+  padding: 15px 20px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  flex-shrink: 0; /* ヘッダーは縮まない */
+}
+/* コントロールエリアは削除 */
+#notes-container {
+  flex-grow: 1; /* 残りの高さをすべて使用 */
+  position: relative; /* 付箋のabsolute配置の基準 */
+  overflow: auto; /* ★ コンテナ内をスクロール可能にする */
+  padding: 10px;
+  margin: 10px; /* 上下左右のマージン */
+  background-color: #e9e9e9;
+  border: 1px dashed #ccc;
+  border-radius: 8px;
+}
+
+/* ▼▼▼ ここから付箋のスタイル変更 ▼▼▼ */
+.note {
+  position: absolute;
+  /* ★ 横長に変更 */
+  width: 180px;
+  min-height: 120px;
+  /* ★ パディング調整 (下部スペース確保) */
+  padding: 15px 15px 45px 15px;
+  /* ★ 少しだけ角を丸める */
+  border-radius: 4px;
+  /* ★ リアルな影 */
+  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.2),
+              0 0 1px rgba(0, 0, 0, 0.1);
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  font-size: 10px;
+  /* ★ 境界線は目立たせない */
+  border: 1px solid transparent;
+  /* ★ 影や変形のアニメーション */
+  transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, box-shadow 0.3s ease;
+  /* ★ わずかに傾ける */
+  transform: rotate(-1.2deg);
+  /* ★ めくれ表現のため */
+  overflow: hidden;
+}
+
+.note:hover {
+    /* ★ ホバー時の影と拡大 */
+    box-shadow: 5px 5px 12px rgba(0, 0, 0, 0.25),
+                0 0 2px rgba(0, 0, 0, 0.1);
+    transform: rotate(-1.2deg) scale(1.02);
+}
+
+.note:active {
+  cursor: grabbing;
+  z-index: 1000 !important;
+  /* ★ ドラッグ中の影と回転リセット */
+  box-shadow: 8px 8px 18px rgba(0, 0, 0, 0.3);
+  transform: scale(1.05) rotate(0deg);
+}
+
+/* ★ 左下の角が少しめくれたような表現 */
+
+
+.note-content {
+  flex-grow: 1;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  padding: 8px 5px; /* パディング少し調整 */
+  margin-bottom: 5px;
+  /* ★ 付箋本体の色を活かす */
+  background-color: transparent;
+  /* ★ 枠線なし */
+  border: none;
+  outline: none;
+  /* ★ コンテンツエリア最小高さ調整 */
+  min-height: 70px;
+  /* ★ 手書き風フォント候補 */
+  font-family: 'Comic Sans MS', 'Segoe Print', 'Bradley Hand', cursive, sans-serif;
+  /* ★ 行間調整 */
+  line-height: 1.5;
+}
+
+.note-content:focus {
+  /* ★ フォーカス時は控えめに */
+   background-color: rgba(255,255,255,0.3);
+   box-shadow: inset 0 0 2px rgba(0,0,0,0.1);
+}
+
+.note-actions {
+  /* ★ 付箋の下部全体に広げ、左右に要素を配置 */
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 5px 10px; /* 内側の余白 */
+  display: flex;
+  justify-content: space-between; /* 左右に振り分け */
+  align-items: flex-end; /* 下揃え */
+  box-sizing: border-box; /* paddingを含めて幅100% */
+}
+
+.note-action-left,
+.note-action-right {
+  display: flex;
+  align-items: center;
+}
+.note-action-left .color-button-container {
+    display: flex;
+    flex-direction: column; /* ボタンとIDを縦に */
+    align-items: center; /* 中央揃え */
+}
+
+/* 汎用ボタンスタイル (基本リセット) */
+.note-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  display: flex; /* アイコンやテキストの中央揃え用 */
+  justify-content: center;
+  align-items: center;
+}
+.note-actions button:hover {
+  opacity: 0.8; /* ホバー時に少し透過 */
+}
+
+/* アイコン風ボタン (色変更ボタン) */
+.icon-button.color-button {
+  width: 24px;
+  height: 24px;
+  background-color: white;
+  border: 1px solid #BDBDBD; /* グレーの枠線 */
+  border-radius: 4px; /* 少し角丸 */
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+/* (オプション) アイコンを入れる場合:
+.icon-button.color-button::before {
+    content: '🎨';
+    font-size: 16px;
+} */
+
+/* 付箋IDのスタイル */
+.note-id {
+  font-size: 10px; /* 小さく */
+  color: #757575; /* グレー */
+  margin-top: 2px; /* ボタンとの間隔 */
+  max-width: 60px; /* 最大幅を指定 */
+  white-space: nowrap; /* 折り返さない */
+  overflow: hidden; /* はみ出した部分を隠す */
+  text-overflow: ellipsis; /* 省略記号(...) */
+  display: block; /* max-widthを効かせるため */
+  text-align: center;
+}
+
+/* テキストボタン (削除ボタン) */
+.text-button.delete-button {
+  background-color: #FFEBEE; /* 画像に近い薄いピンク */
+  color: #E53935; /* 画像に近い赤 */
+  border: 1px solid #FFCDD2; /* やや濃いピンクの枠線 */
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px; /* フォントサイズ調整 */
+  font-weight: normal; /* 太字解除 */
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  transition: background-color 0.2s ease; /* ホバー効果 */
+}
+
+.text-button.delete-button:hover {
+  background-color: #FFCDD2; /* ホバーで少し濃く */
+  color: #D32F2F;
+  opacity: 1; /* ホバー時の透過は解除 */
+}
+/* ▲▲▲ 付箋のスタイル変更ここまで ▲▲▲ */
+
+
+/* --- 以下のスタイルは変更なし --- */
+
+#loading-spinner {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: 5px solid #f3f3f3; /* スピナーの背景色 */
+  border-top: 5px solid #3498db; /* スピナーの色 */
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite; /* 回転アニメーション */
+  display: none; /* 最初は非表示 */
+  z-index: 9999; /* 最前面に表示 */
+}
+@keyframes spin {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+.status-message {
+  /* ステータスメッセージは画面上部に固定表示する例 */
+  position: fixed;
+  top: 70px; /* ヘッダーの下あたり */
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 8px 15px;
+  border-radius: 5px;
+  font-size: 0.9em;
+  z-index: 1001;
+  opacity: 0; /* 初期状態は非表示 */
+  transition: opacity 0.5s ease-out;
+}
+.status-message.show {
+    opacity: 1;
+}
+.error {
+  background-color: rgba(211, 47, 47, 0.9); /* エラー時は赤背景 */
+}
+.success {
+  background-color: rgba(56, 142, 60, 0.9); /* 成功時は緑背景 */
+}
+
+/* カラーピッカー関連 (変更なし) */
+.color-option { display: inline-block; width: 20px; height: 20px; margin-right: 5px; border: 1px solid #ccc; border-radius: 3px; cursor: pointer; vertical-align: middle; }
+.color-option.selected { border: 2px solid #000; }
+.color-palette { position: absolute; bottom: 35px; /* 少し上に */ right: 5px; background: white; padding: 5px; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 1001; display: flex; gap: 3px; }
+
+/* 右下の追加ボタン (FAB: Floating Action Button) */
+#add-note-fab {
+  position: fixed; /* 画面に固定 */
+  bottom: 30px;    /* 下から30px */
+  right: 30px;     /* 右から30px */
+  width: 60px;     /* 幅 */
+  height: 60px;    /* 高さ */
+  background-color: #2979FF; /* デザイン画像の青色 */
+  color: white;    /* 文字色 白 */
+  border: none;
+  border-radius: 50%; /* 円形にする */
+  font-size: 36px;  /* '+' のサイズ */
+  line-height: 58px; /* '+' を垂直中央に微調整 */
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* 影 */
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease; /* ホバー効果用 */
+  z-index: 100; /* 他の要素より手前に */
+}
+#add-note-fab:hover {
+  background-color: #1C5EFF; /* ホバー時の色 */
+  transform: scale(1.05); /* ホバー時に少し大きく */
+}
+#add-note-fab:active {
+    transform: scale(0.95); /* クリック時に少し小さく */
+}
+/* --- ここまでCSS --- */
+  </style>
+</head>
+<body>
+
+  <!-- controls div は削除 -->
+
+  <div id="notes-container">
+    <!-- 付箋はここに動的に追加されます -->
+    <p style="text-align:center; color:#777; margin-top: 20px;">読み込み中...</p>
+  </div>
+
+  <!-- 右下の追加ボタン -->
+  <button id="add-note-fab" onclick="addNote()" title="新しい付箋を追加">+</button>
+
+  <div id="loading-spinner"></div>
+  <!-- ステータスメッセージ表示用の要素 -->
+  <div id="status-message" class="status-message"></div>
+
+  <!-- Firebase SDK の読み込み (v8互換形式) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <script>
+    // ▼▼▼▼▼ Firebaseプロジェクトの設定 (ここをあなたの設定に置き換えてください！) ▼▼▼▼▼
+    const firebaseConfig = {
+      apiKey: "AIzaSyDTZh9YA1toQ0RpiwJ6N--JxlIcqGVVNC4", // 例: "AIzaSyDTZh9YA1toQ0RpiwJ6N--JxlIcqGVVNC4"
+      authDomain: "project-5628641483248086675.firebaseapp.com", // 例: "project-5628641483248086675.firebaseapp.com"
+      databaseURL: "https://project-5628641483248086675-default-rtdb.asia-southeast1.firebasedatabase.app", // 例: "https://project-5628641483248086675-default-rtdb.asia-southeast1.firebasedatabase.app"
+      projectId: "project-5628641483248086675", // 例: "project-5628641483248086675"
+      storageBucket: "project-5628641483248086675.firebasestorage.app", // 例: "project-5628641483248086675.firebasestorage.app"
+      messagingSenderId: "774046665248", // 例: "774046665248"
+      appId: "1:774046665248:web:144337b8ac36ad94758a45" // 例: "1:774046665248:web:144337b8ac36ad94758a45"
+    };
+    // ▲▲▲▲▲ Firebaseプロジェクトの設定 ▲▲▲▲▲
+
+    // --- ここからJavaScript ---
+
+    // Firebase初期化
+    try {
+      firebase.initializeApp(firebaseConfig);
+    } catch (e) {
+      console.error("Firebase initialization error:", e);
+      alert("Firebaseの初期化に失敗しました。コンソールを確認してください。");
+    }
+
+    const database = firebase.database();
+    const notesRef = database.ref('notes'); // Realtime Databaseの'notes'パスを参照
+
+    let notesOnBoard = {}; // { id: {element, data} } ローカルの付箋キャッシュ
+    let draggedNote = null; // ドラッグ中の付箋要素
+    let offsetX, offsetY; // ドラッグ開始時のマウスオフセット
+    let initialLoadComplete = false; // 初回読み込み完了フラグ
+    let statusTimeout; // ステータスメッセージ表示用タイマー
+
+    // 利用可能な色
+    const noteColors = {
+      "#fffacd": "レモン",
+      "#add8e6": "水色",
+      "#90ee90": "黄緑",
+      "#ffb6c1": "ピンク",
+      "#ffa07a": "サーモン",
+      "#e6e6fa": "ラベンダー"
+    };
+
+    // ページ読み込み完了時の処理
+    window.onload = function() {
+      // Firebaseのデータ変更を監視開始
+      startListening();
+
+      // ドラッグ＆ドロップ用のイベントリスナーをコンテナに設定
+      const notesContainer = document.getElementById('notes-container');
+      notesContainer.addEventListener('mousemove', onDrag);
+      notesContainer.addEventListener('mouseup', onDragEnd);
+      notesContainer.addEventListener('mouseleave', onDragEnd); // コンテナ外に出てもドラッグ終了
+    };
+
+    // ローディングスピナーの表示/非表示
+    function showLoading(show) {
+      document.getElementById('loading-spinner').style.display = show ? 'block' : 'none';
+    }
+
+    // ステータスメッセージの表示（画面上部）
+    function showStatus(message, type = 'success') {
+      const statusEl = document.getElementById('status-message');
+      statusEl.textContent = message;
+      // 既存のクラスを削除してから新しいクラスを追加
+      statusEl.className = 'status-message'; // リセット
+      // 遅延させてクラスを追加することでCSSトランジションが効く
+      setTimeout(() => {
+          statusEl.classList.add('show');
+          statusEl.classList.add(type); // success or error
+      }, 10); // わずかな遅延
+
+      // 既存のタイマーがあればクリア
+      if (statusTimeout) clearTimeout(statusTimeout);
+
+      // 3秒後にメッセージを消すタイマーを設定
+      statusTimeout = setTimeout(() => {
+         statusEl.classList.remove('show');
+         // トランジションが終わるのを待ってからクラスを完全に削除（任意）
+         setTimeout(() => {
+            if (!statusEl.classList.contains('show')) {
+                statusEl.classList.remove(type);
+            }
+         }, 500); // CSSのtransition時間と合わせる
+        }, 3000);
+    }
+
+
+    // Firebase Realtime Databaseの変更監視を開始
+    function startListening() {
+      const container = document.getElementById('notes-container');
+      showLoading(true);
+
+      // 'value'イベントリスナー: 'notes'パス以下のデータが変更されるたびに呼び出される
+      notesRef.on('value', (snapshot) => {
+        showLoading(false);
+        const notesData = snapshot.val(); // データベースのスナップショットを取得
+        const initialMsg = container.querySelector('p'); // 初期メッセージ要素
+        if(initialMsg) initialMsg.remove(); // 読み込みメッセージ削除
+
+        const currentlyDisplayed = new Set(Object.keys(notesOnBoard)); // 現在表示中のID
+        const receivedIds = new Set(notesData ? Object.keys(notesData) : []); // DBから取得したID
+
+        if (notesData) {
+          // 取得したデータ（オブジェクト）を反 phục処理
+          Object.entries(notesData).forEach(([id, noteData]) => {
+            if (typeof noteData !== 'object' || noteData === null || !('content' in noteData)) {
+                console.warn("Invalid note data structure found for ID:", id, noteData);
+                // notesRef.child(id).remove().catch(err => console.error("Error removing invalid data:", err));
+                return; // 不正なデータはスキップ
+            }
+
+            if (notesOnBoard[id]) { // 既存の付箋を更新
+                const noteDiv = notesOnBoard[id].element;
+                const contentDiv = noteDiv.querySelector('.note-content');
+                const localData = notesOnBoard[id].data;
+
+                // 内容の更新 (編集中でなければ)
+                if (document.activeElement !== contentDiv && localData.content !== noteData.content) {
+                    contentDiv.textContent = noteData.content;
+                }
+                // 色の更新
+                if (localData.color !== noteData.color) {
+                    noteDiv.style.backgroundColor = noteData.color;
+                }
+                // 位置の更新 (ドラッグ中でなければ)
+                 if ((!draggedNote || draggedNote.dataset.id !== id) && (localData.x !== noteData.x || localData.y !== noteData.y)) {
+                    noteDiv.style.left = (noteData.x || 10) + 'px';
+                    noteDiv.style.top = (noteData.y || 10) + 'px';
+                 }
+                // ローカルデータの更新
+                notesOnBoard[id].data = { id, ...noteData };
+                currentlyDisplayed.delete(id); // 処理済みとしてSetから削除
+
+            } else { // 新しい付箋を作成
+                createNoteElement({ id, ...noteData }, container); // 付箋要素を作成
+            }
+          });
+        }
+
+         // DBになくてローカルに存在する（削除された）付箋をDOMから削除
+        currentlyDisplayed.forEach(idToRemove => {
+            if(notesOnBoard[idToRemove]) {
+                notesOnBoard[idToRemove].element.remove();
+                delete notesOnBoard[idToRemove];
+            }
+        });
+
+
+        // 付箋が一つもない場合のメッセージ表示
+        if (Object.keys(notesOnBoard).length === 0 && !container.querySelector('.note')) {
+           const noNotesMsg = document.createElement('p');
+           noNotesMsg.textContent = '付箋はありません。「+」ボタンから追加しましょう！';
+           noNotesMsg.style.textAlign = 'center';
+           noNotesMsg.style.color = '#777';
+           noNotesMsg.style.marginTop = '20px';
+           container.appendChild(noNotesMsg);
+        } else {
+           // もし「付箋なし」メッセージがあれば削除
+            const existingMsg = container.querySelector('p');
+            if (existingMsg && existingMsg.textContent.includes('付箋はありま')) {
+                existingMsg.remove();
+            }
+        }
+        initialLoadComplete = true; // 初回読み込み/更新完了
+
+      }, (error) => {
+        // データ読み取りエラー時の処理
+        console.error("Firebase Read Error:", error);
+        showStatus(`データベース接続エラー: ${error.message}`, 'error');
+        container.innerHTML = `<p style="text-align:center; color:red; margin-top: 20px;">データベースへの接続に失敗しました。設定(${firebaseConfig.databaseURL})やルールを確認してください。</p>`;
+        showLoading(false);
+      });
+    }
+
+
+    // 付箋のDOM要素を作成してコンテナに追加する関数
+        // 付箋のDOM要素を作成してコンテナに追加する関数
+    function createNoteElement(noteData, container) {
+        if (!noteData || !noteData.id) {
+            console.error("Invalid note data passed to createNoteElement:", noteData);
+            return;
+        }
+
+      const noteDiv = document.createElement('div');
+      noteDiv.className = 'note';
+      noteDiv.dataset.id = noteData.id; // Firebaseのキーをdata属性に保持
+      noteDiv.style.left = (noteData.x || 10) + 'px';
+      noteDiv.style.top = (noteData.y || 10) + 'px';
+      noteDiv.style.backgroundColor = noteData.color || '#fffacd';
+      noteDiv.style.zIndex = Object.keys(notesOnBoard).length + 1;
+
+      // 付箋の内容を表示・編集する部分
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'note-content';
+      contentDiv.textContent = noteData.content;
+      contentDiv.contentEditable = "true";
+      contentDiv.addEventListener('blur', (e) => { /* ...変更なし... */ });
+      contentDiv.addEventListener('keydown', (e) => { /* ...変更なし... */ });
+
+      // ▼▼▼ 操作ボタン（色変更、削除）のコンテナ (ここから変更) ▼▼▼
+      const actionsDiv = document.createElement('div');
+      actionsDiv.className = 'note-actions'; // class名は維持
+
+      // 左側: 色変更ボタンとID
+      const leftActions = document.createElement('div');
+      leftActions.className = 'note-action-left';
+
+      const colorButtonContainer = document.createElement('div'); // ボタンとIDをまとめるコンテナ
+      const colorButton = document.createElement('button');
+      colorButton.className = 'icon-button color-button'; // 新しいクラス名
+      colorButton.title = '色を変更';
+      // colorButton.innerHTML = '⬜'; // 四角いアイコン（環境依存注意）
+      // より確実に四角を表示するため、空のbuttonにCSSでスタイル付け
+      colorButton.onclick = (e) => {
+          e.stopPropagation();
+          openColorPicker(noteData.id, noteDiv);
+      };
+      colorButtonContainer.appendChild(colorButton);
+
+      const noteIdSpan = document.createElement('span');
+      noteIdSpan.className = 'note-id';
+      noteIdSpan.textContent = noteData.id ? noteData.id.substring(0, 8) + '...' : ''; // IDの先頭8文字+...
+      noteIdSpan.title = noteData.id || ''; // ホバーで全文表示
+      colorButtonContainer.appendChild(noteIdSpan);
+
+      leftActions.appendChild(colorButtonContainer);
+
+      // 右側: 削除ボタン
+      const rightActions = document.createElement('div');
+      rightActions.className = 'note-action-right';
+
+      const deleteButton = document.createElement('button');
+      // クラス名を変更 (delete-button は維持しつつ、汎用クラスも追加)
+      deleteButton.className = 'text-button delete-button';
+      deleteButton.textContent = '削除';
+      deleteButton.title = '削除';
+      deleteButton.onclick = (e) => {
+          e.stopPropagation();
+          deleteNoteFromServer(noteData.id);
+      };
+      rightActions.appendChild(deleteButton);
+
+      // 左右のアクションを actionsDiv に追加
+      actionsDiv.appendChild(leftActions);
+      actionsDiv.appendChild(rightActions);
+      // ▲▲▲ 操作ボタンの変更ここまで ▲▲▲
+
+      // 要素を組み立てる
+      noteDiv.appendChild(contentDiv);
+      noteDiv.appendChild(actionsDiv);
+      noteDiv.addEventListener('mousedown', onDragStart);
+
+      // 付箋をコンテナに追加
+      container.appendChild(noteDiv);
+      notesOnBoard[noteData.id] = { element: noteDiv, data: noteData };
+    }
+
+    // ★ 新しい付箋を追加する関数 (FABボタンから呼び出す)
+    function addNote() {
+      // デフォルト値で新しい付箋データを作成
+      const newNoteData = {
+        content: "", // デフォルトの内容
+        color: "#fffacd", // デフォルトの色 (レモン)
+        // 配置するコンテナの表示領域内になるように調整
+        x: Math.floor(Math.random() * (document.getElementById('notes-container').clientWidth - 230)) + 10,
+        y: Math.floor(Math.random() * (document.getElementById('notes-container').clientHeight / 2)) + 10, // 上半分に配置
+        createdAt: firebase.database.ServerValue.TIMESTAMP
+      };
+
+      showLoading(true);
+      // Firebase Realtime Databaseにデータをpush
+      notesRef.push(newNoteData)
+        .then((newRef) => { // push成功時に新しい付箋の参照(ID含む)が取得できる
+          showLoading(false);
+          showStatus("新しい付箋を追加しました。", 'success');
+          // ★ オプション: 新しく追加した付箋の内容をすぐに編集できるようにフォーカス
+          setTimeout(() => {
+              const newNoteElement = document.querySelector(`.note[data-id="${newRef.key}"] .note-content`);
+              if(newNoteElement) {
+                  newNoteElement.focus();
+                  // テキスト全選択 (より編集しやすく)
+                  const range = document.createRange();
+                  range.selectNodeContents(newNoteElement);
+                  const sel = window.getSelection();
+                  sel.removeAllRanges();
+                  sel.addRange(range);
+              }
+          }, 200); // DOM描画とFirebase同期を少し待つ
+
+        })
+        .catch(err => {
+          showLoading(false);
+          showStatus(`追加エラー: ${err.message}`, 'error');
+          console.error("Firebase Write Error (Add):", err);
+        });
+    }
+
+    // カラーピッカーを開く関数 (変更なし)
+     function openColorPicker(noteId, noteDiv) {
+        let existingPicker = document.querySelector('.color-palette');
+        if (existingPicker) {
+            existingPicker.remove();
+            if (existingPicker.dataset.noteId === noteId) return;
+        }
+        const picker = document.createElement('div');
+        picker.className = 'color-palette';
+        picker.dataset.noteId = noteId;
+        Object.entries(noteColors).forEach(([hex, name]) => {
+            const colorChip = document.createElement('span');
+            colorChip.className = 'color-option';
+            colorChip.style.backgroundColor = hex;
+            colorChip.title = name;
+            const currentNote = notesOnBoard[noteId]?.data;
+            if (currentNote && currentNote.color === hex) {
+                colorChip.classList.add('selected');
+            }
+            colorChip.onclick = (e) => {
+                e.stopPropagation();
+                updateNoteOnServer(noteId, { color: hex });
+                picker.remove();
+                document.body.removeEventListener('click', closePickerOnClickOutside, true);
+            };
+            picker.appendChild(colorChip);
+        });
+        noteDiv.appendChild(picker);
+        setTimeout(() => {
+            document.body.addEventListener('click', closePickerOnClickOutside, true);
+        }, 0);
+    }
+
+    // ピッカーの外側をクリックしたときにピッカーを閉じる関数 (変更なし)
+    function closePickerOnClickOutside(e) {
+        const picker = document.querySelector('.color-palette');
+        if (picker && !picker.contains(e.target) && !e.target.closest('.note-actions button')) { // カラーボタン自体も除外
+           picker.remove();
+           document.body.removeEventListener('click', closePickerOnClickOutside, true);
+        }
+    }
+
+    // 付箋の情報をFirebase上で更新する関数 (変更なし)
+    function updateNoteOnServer(noteId, updates) {
+      const updateData = {
+        ...updates,
+        updatedAt: firebase.database.ServerValue.TIMESTAMP
+      };
+      notesRef.child(noteId).update(updateData)
+        .catch(err => {
+          showStatus(`更新エラー: ${err.message}`, 'error');
+          console.error("Firebase Update Error:", err);
+        });
+    }
+
+    // 付箋をFirebaseから削除する関数 (変更なし)
+    function deleteNoteFromServer(noteId) {
+      if (!confirm("この付箋を削除してもよろしいですか？")) {
+        return;
+      }
+      showLoading(true);
+      notesRef.child(noteId).remove()
+        .then(() => {
+          showLoading(false);
+          showStatus("付箋を削除しました。", 'success');
+        })
+        .catch(err => {
+          showLoading(false);
+          showStatus(`削除エラー: ${err.message}`, 'error');
+          console.error("Firebase Remove Error:", err);
+        });
+    }
+
+    // --- ドラッグ＆ドロップ処理 (変更なし) ---
+    function onDragStart(e) {
+      if (e.target.isContentEditable || e.target.tagName === 'BUTTON' || e.target.closest('.color-palette')) { return; }
+      if (window.getSelection) { window.getSelection().removeAllRanges(); } else if (document.selection) { document.selection.empty(); }
+      e.preventDefault();
+      draggedNote = this;
+      let maxZ = 0;
+      document.querySelectorAll('.note').forEach(n => { const z = parseInt(n.style.zIndex || '1'); if (z > maxZ) maxZ = z; });
+      draggedNote.style.zIndex = maxZ + 1;
+      const rect = draggedNote.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      draggedNote.style.opacity = '0.8';
+      draggedNote.style.transform = 'scale(1.05) rotate(3deg)';
+      draggedNote.style.cursor = 'grabbing';
+    }
+    function onDrag(e) {
+      if (!draggedNote) return;
+      e.preventDefault();
+      const container = document.getElementById('notes-container');
+      const containerRect = container.getBoundingClientRect();
+      let newX = e.clientX - containerRect.left - offsetX;
+      let newY = e.clientY - containerRect.top - offsetY;
+      const noteWidth = draggedNote.offsetWidth;
+      const noteHeight = draggedNote.offsetHeight;
+      newX = Math.max(0, Math.min(newX, container.scrollWidth - noteWidth)); // scrollWidthを使う
+      newY = Math.max(0, Math.min(newY, container.scrollHeight - noteHeight)); // scrollHeightを使う
+      draggedNote.style.left = newX + 'px';
+      draggedNote.style.top = newY + 'px';
+    }
+    function onDragEnd(e) {
+      if (!draggedNote) return;
+      draggedNote.style.opacity = '1';
+      draggedNote.style.transform = 'scale(1) rotate(0deg)';
+      draggedNote.style.cursor = 'grab';
+      const noteId = draggedNote.dataset.id;
+      const newX = parseInt(draggedNote.style.left);
+      const newY = parseInt(draggedNote.style.top);
+      const currentNote = notesOnBoard[noteId]?.data;
+      if (currentNote && (currentNote.x !== newX || currentNote.y !== newY)) {
+        updateNoteOnServer(noteId, { x: newX, y: newY });
+      }
+      draggedNote = null;
+    }
+
+    // --- ここまでJavaScript ---
+  </script>
+</body>
+</html>

@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>挿入ソート 選択</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* --- スタイル 1: Flexboxレイアウト --- */
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        #main {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .left-pane {
+            width: 55%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #FFFFFF;
+            overflow-y: auto;
+        }
+
+        .left-pane h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .left-pane p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .right-pane {
+            width: 45%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #FFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            /* コントロールとソートモジュール間のスペース (参照コード適用) */
+            overflow-y: auto;
+            height: 100%;
+        }
+
+        /* --- コントロールパネルのスタイル (参照コード適用) --- */
+        .controls-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 750px;
+            /* マージソート側の sort-module-wrapper に合わせる */
+            box-sizing: border-box;
+            /* ★ 枠線を追加しました */
+        }
+
+        .controls-container button {
+            padding: 8px 12px;
+            border-radius: 4px;
+            background-color: #f0f0f0;
+            cursor: pointer;
+            font-weight: normal;
+            font-size: 0.9em;
+            transition: background-color 0.2s ease;
+            border: 1px solid #ccc;
+        }
+
+        .controls-container button:hover:not(:disabled) {
+            /* :not(:disabled) を追加 */
+            background-color: #e0e0e0;
+        }
+
+        .controls-container button:disabled {
+            background-color: #f5f5f5;
+            color: #aaa;
+            cursor: not-allowed;
+            border-color: #ddd;
+        }
+
+        .controls-container label {
+            font-size: 0.9em;
+            color: #333;
+            margin-left: 5px;
+            /* 参照より少し調整 */
+        }
+
+        #speed-slider {
+            width: 120px;
+            cursor: pointer;
+        }
+
+        #speed-value {
+            font-size: 0.9em;
+            min-width: 45px;
+            /* 元は30px */
+            text-align: right;
+            color: #333;
+        }
+
+
+        .sort-module-wrapper {
+            width: 100%;
+            max-width: 750px;
+            /* 元の値を維持 */
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* height: 95vw; */
+            /* この高さ指定は問題を起こしやすいのでコメントアウト。flex-growで調整 */
+            flex-grow: 1;
+            /* 残りのスペースを埋める */
+            overflow: hidden;
+            /* 内部のoverflowは各コンポーネントで管理 */
+            padding-left: 30px;
+            /* 元のスタイル */
+            /* sort-module-wrapperにも枠線を加えると統一感が出るかもしれません（オプション） */
+        }
+
+
+        .pane-title {
+            font-size: 1.6em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            text-align: center;
+            width: 100%;
+        }
+
+
+        /* --- 挿入ソート 手動ステップ --- */
+        #insertion_main-app-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 20px;
+        }
+
+        #insertion_sort-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+            margin-right: auto;
+            /* 左寄せを維持 */
+        }
+
+        .step-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0;
+            justify-content: flex-start;
+            min-height: 45px;
+            opacity: 1;
+            visibility: visible;
+            height: auto;
+            transition: opacity 0.5s ease-in-out, visibility 0s linear 0s, height 0.5s ease-in-out, margin-bottom 0.5s ease-in-out;
+            position: relative;
+            box-sizing: border-box;
+            padding: 0;
+            width: 100%;
+        }
+
+        .step-row:not(.visible) {
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+            visibility: hidden;
+            pointer-events: none;
+            margin-bottom: 0;
+            transition: opacity 0.3s ease-out, height 0.3s ease-out, margin-bottom 0.3s ease-out, visibility 0s linear 0.3s;
+        }
+
+        .step-row.visible {
+            opacity: 1;
+            height: auto;
+            margin-bottom: 4px;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .initial-array-row.visible {
+            margin-bottom: 8px;
+        }
+
+        .number-squares {
+            display: flex;
+            gap: 6px;
+            margin-right: 10px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            /* スクロールバー用スペース */
+        }
+
+        .number-element {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            cursor: default;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            text-align: center;
+            text-align-last: center;
+            transition: background-color 0.3s ease, border-color 0.3s ease, outline 0.3s ease;
+            /* outline追加 */
+        }
+
+        .number-element option {
+            background-color: white;
+            color: black;
+        }
+
+        .number-element.state-interactive-swap-target,
+        .bar_item.state-interactive-swap-target {
+            background-color: #ff4136;
+            border-color: #dc2a23;
+        }
+
+        .number-element.state-interactive-swap-target {
+            cursor: pointer;
+        }
+
+
+        .number-element.state-interactive-swap-source,
+        .bar_item.state-interactive-swap-source {
+            background-color: #cccccc;
+            border-color: #b3b3b3;
+        }
+
+        .number-element.state-interactive-swap-source {
+            cursor: pointer;
+        }
+
+
+        .number-element.state-sorted,
+        .bar_item.state-sorted {
+            background-color: #8CE3FE;
+            /* 薄い青 */
+            border-color: #7bc8e2;
+        }
+
+        .number-element.state-unsorted,
+        .bar_item.state-unsorted {
+            background-color: #cccccc;
+            border-color: #b3b3b3;
+        }
+
+        .number-element.state-unsorted:disabled {
+            background-color: #cccccc;
+            border-color: #b3b3b3;
+        }
+
+        .number-element.state-final-orange,
+        /* ソート完了時の全体 */
+        .bar_item.state-final-orange,
+        .number-element.state-initial,
+        /* 初期配列 */
+        .bar_item.state-initial {
+            background-color: #FFC107;
+            border-color: #FFA000;
+            color: black;
+            font-weight: bold;
+        }
+
+        /* New animation states */
+        .number-element.state-key,
+        .bar_item.state-key {
+            /*background-color: #3498db;
+            /* 濃い青 (キー) *//*
+            border-color: #2980b9;*/
+            background-color: #ff4136;
+            border-color: #dc2a23;
+        }
+
+        .number-element.state-compare,
+        .bar_item.state-compare {/*
+            background-color: #f1c40f;
+            /* 黄色 (比較対象) *//*
+            border-color: #f39c12;
+            color: black;*/
+                        background-color: #8CE3FE;
+            /* 薄い青 */
+            border-color: #7bc8e2;
+        }
+        /*
+        .number-element.state-shifting,
+        .bar_item.state-shifting {/*
+            background-color: #e67e22;
+            /* オレンジ (シフト中) *//*
+            border-color: #d35400;
+        }*/
+
+        .number-element.state-insert-target,
+        .bar_item.state-insert-target {
+            outline: 3px solid #2ecc71;
+            /* 緑色の太枠 (挿入位置の候補) */
+            outline-offset: -2px;
+        }
+
+        .number-element.state-key-inserted,
+        .bar_item.state-key-inserted {
+            /* 挿入直後のキー *//*
+            background-color: #9b59b6;
+            /* 紫 *//*
+            border-color: #8e44ad;*/
+                        background-color: #8CE3FE;
+            /* 薄い青 */
+            border-color: #7bc8e2;
+        }
+
+
+        .number-element:disabled {
+            opacity: 1;
+            cursor: default;
+        }
+
+        .number-element:disabled::-ms-expand {
+            display: none;
+        }
+
+        .execute-btn {
+            background-color: #212121;
+            color: white;
+            border: 1px solid #000;
+            width: 38px;
+            height: 38px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            transition: background-color 0.2s ease;
+            padding: 0;
+            flex-shrink: 0;
+            cursor: pointer;
+            margin-right: 12px;
+        }
+
+        .execute-btn svg {
+            fill: white;
+            width: 16px;
+            height: 16px;
+            display: block;
+        }
+
+        .execute-btn:disabled {
+            background-color: #666666;
+            border-color: #555555;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .execute-btn:disabled svg {
+            fill: #cccccc;
+        }
+
+        .status-text {
+            font-size: 1.0em;
+            font-weight: bold;
+            min-width: 60px;
+            text-align: left;
+            line-height: 40px;
+            flex-shrink: 0;
+        }
+
+        .status-ok {
+            color: #2ecc40;
+        }
+
+        .status-error {
+            color: #ff4136;
+        }
+
+        .status-complete {
+            color: #2ecc40;
+        }
+
+        .empty-array-message {
+            padding: 10px;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #555;
+            width: 100%;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 480px) {
+            .controls-container {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+
+            .controls-container label {
+                margin-left: 0;
+            }
+
+            #speed-slider {
+                width: 100%;
+            }
+
+            .number-squares {
+                gap: 4px;
+                margin-right: 8px;
+            }
+
+            .number-element {
+                width: 32px;
+                height: 32px;
+                font-size: 1em;
+            }
+
+            .execute-btn {
+                width: 32px;
+                height: 32px;
+                margin-right: 8px;
+            }
+
+            .execute-btn svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            .status-text {
+                font-size: 1em;
+                min-width: 50px;
+                line-height: 32px;
+            }
+        }
+
+
+        /* --- 同期棒グラフ表示 --- */
+        #sync_bar_graph_container {
+            display: flex;
+            width: 100%;
+            min-height: 200px;
+            padding: 10px 0;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+            overflow-x: auto;
+            /* バーが多い場合にスクロールできるように */
+        }
+
+        #bar_items_wrapper {
+            display: flex;
+            gap: 5px;
+            align-items: flex-end;
+            position: relative;
+            padding-bottom: 5px;
+            /* スクロールバー用スペース */
+        }
+
+        .bar_item {
+            width: 40px;
+            text-align: center;
+            border: 1px solid #d0d0d0;
+            background-color: #f0f0f0;
+            font-weight: bold;
+            font-size: 1em;
+            color: #FFFFFF;
+            box-sizing: border-box;
+            position: relative;
+            --value: 1;
+            height: calc(25px + (var(--value) * 15px));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background-color 0.3s ease, border-color 0.3s ease, height 0.3s ease, outline 0.3s ease;
+            /* outline追加 */
+        }
+    </style>
+</head>
+
+<body>
+    <div id="main">
+        <div class="left-pane">
+            <img src="insertion.png" alt="insertion" width="98%">
+        </div>
+        <div class="right-pane">
+            <div class="controls-container">
+                <button id="auto-run-button">実行</button>
+                <button id="reset-button">リセット</button>
+                <label for="speed-slider">速度:</label>
+                <input type="range" id="speed-slider" min="200" max="4000" value="2000" step="100"> <!-- min値を調整 -->
+                <span id="speed-value">×1.0</span>
+            </div>
+            <div class="sort-module-wrapper">
+                <div id="sync_bar_graph_container">
+                    <div id="bar_items_wrapper">
+                        <!-- JavaScriptで棒グラフ要素を動的に生成 -->
+                    </div>
+                </div>
+                <div id="insertion_main-app-container">
+                    <div id="insertion_sort-container">
+                        <!-- JavaScript will populate this area -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Global Shared State ---
+        let sharedInitialArray = [];
+        let isAutoRunning = false;
+        let autoRunTimeoutId = null; // Changed from autoRunIntervalId
+        let currentSpeed = 2000; // Default speed in ms for one pass animation
+
+        // --- DOM Elements for Controls ---
+        let autoRunButton, resetButton, speedSlider, speedValueDisplay;
+
+        // --- Script 1: Insertion Sort (Manual) ---
+        let insertion_initialArray = [];
+        let insertion_currentArray = [];
+        let insertion_currentPass = 0;
+        let insertion_allPossibleOptionsForSelect = [];
+
+        const insertion_sortContainer = document.getElementById('insertion_sort-container');
+        let insertion_allRowsElements = [];
+        let insertion_allNumberElementsInRows = [];
+        let insertion_allExecuteButtons = [];
+        let insertion_allStatusTexts = [];
+
+        // --- Bar Graph Sync Logic ---
+        const barGraphItemsWrapper = document.getElementById('bar_items_wrapper');
+        const delay = ms => new Promise(res => setTimeout(res, ms));
+
+        function renderBarGraph(arr, elementStates = []) {
+            // ... (変更なし)
+            if (!barGraphItemsWrapper) return;
+            const currentNumBars = barGraphItemsWrapper.children.length;
+            const targetNumBars = arr.length;
+
+            if (currentNumBars !== targetNumBars) {
+                barGraphItemsWrapper.innerHTML = '';
+                arr.forEach((value, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'bar_item';
+                    item.id = `bar_item-${index}`;
+                    barGraphItemsWrapper.appendChild(item);
+                });
+            }
+
+            arr.forEach((value, index) => {
+                const item = document.getElementById(`bar_item-${index}`);
+                if (!item) return;
+                item.textContent = value;
+                item.style.setProperty('--value', value);
+
+                const classesToRemove = Array.from(item.classList).filter(cls => cls.startsWith('state-'));
+                if (classesToRemove.length > 0) {
+                    item.classList.remove(...classesToRemove);
+                }
+                if (elementStates && elementStates[index]) {
+                    item.classList.add(elementStates[index]);
+                } else if (arr.length > 0) {
+                    item.classList.add('state-unsorted');
+                }
+            });
+        }
+
+
+        function insertion_createSelectElement(id, value, optionsArray, stateClasses, isDisabled) {
+            // ... (変更なし)
+            const select = document.createElement('select');
+            select.id = id;
+            select.className = `number-element ${stateClasses}`;
+            select.disabled = isDisabled;
+            const stringValueToSelect = String(value);
+
+            const uniqueStringOptions = [...new Set(optionsArray.map(String))];
+            const sortedOptions = uniqueStringOptions.sort((a, b) => Number(a) - Number(b));
+
+            if (value !== undefined && value !== null && value !== '' && !sortedOptions.includes(stringValueToSelect)) {
+                sortedOptions.push(stringValueToSelect);
+                sortedOptions.sort((a, b) => Number(a) - Number(b));
+            }
+
+            sortedOptions.forEach(optVal => {
+                const option = document.createElement('option');
+                option.value = String(optVal);
+                option.textContent = String(optVal);
+                select.appendChild(option);
+            });
+
+            select.value = stringValueToSelect;
+            if (select.value !== stringValueToSelect && select.options.length > 0) {
+                for (let i = 0; i < select.options.length; i++) {
+                    if (select.options[i].textContent === stringValueToSelect) {
+                        select.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            if (select.options.length === 0 && (value !== undefined && value !== null && value !== '')) {
+                const option = document.createElement('option');
+                option.value = stringValueToSelect;
+                option.textContent = stringValueToSelect;
+                select.appendChild(option);
+                select.value = stringValueToSelect;
+            }
+            return select;
+        }
+
+        function insertion_generateRows() {
+            // ... (大きな変更なし、初期描画のstate-initialに注意)
+            insertion_sortContainer.innerHTML = '';
+            insertion_allRowsElements = [];
+            insertion_allNumberElementsInRows = [];
+            insertion_allExecuteButtons = [];
+            insertion_allStatusTexts = [];
+            const numElements = insertion_currentArray.length;
+
+            insertion_allPossibleOptionsForSelect = [];
+            if (numElements > 0) {
+                for (let k = 1; k <= Math.max(10, ...insertion_currentArray.filter(v => !isNaN(v) && v !== null && typeof v === 'number')); k++) {
+                    insertion_allPossibleOptionsForSelect.push(String(k));
+                }
+            } else {
+                for (let k = 1; k <= 10; k++) insertion_allPossibleOptionsForSelect.push(String(k));
+            }
+
+
+            if (numElements > 0) {
+                const initialDisplayRowDiv = document.createElement('div');
+                initialDisplayRowDiv.className = 'step-row visible initial-array-row';
+                const initialSquaresDiv = document.createElement('div');
+                initialSquaresDiv.className = 'number-squares';
+                insertion_initialArray.forEach((val, index) => {
+                    const selectEl = insertion_createSelectElement(`initial-el-${index}`, val, [val], 'state-initial', true);
+                    initialSquaresDiv.appendChild(selectEl);
+                });
+                initialDisplayRowDiv.appendChild(initialSquaresDiv);
+                insertion_sortContainer.appendChild(initialDisplayRowDiv);
+                renderBarGraph(insertion_currentArray, insertion_currentArray.map(() => 'state-initial'));
+            } else {
+                const emptyMsgDiv = document.createElement('div');
+                emptyMsgDiv.className = 'empty-array-message';
+                emptyMsgDiv.textContent = "ソート対象のデータがありません。";
+                insertion_sortContainer.appendChild(emptyMsgDiv);
+                renderBarGraph([], []);
+                return;
+            }
+
+            for (let i = 0; i < numElements; i++) {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'step-row'; // Initially not visible unless it's the first step
+                rowDiv.id = `insertion-step-row-${i}`;
+                const squaresDiv = document.createElement('div');
+                squaresDiv.className = 'number-squares';
+                const currentNumberElementsForRow = [];
+                for (let j = 0; j < numElements; j++) {
+                    // Initial state for rows will be set by prepareStepUI
+                    const selectEl = insertion_createSelectElement(`insertion-el-${i}-${j}`, '', insertion_allPossibleOptionsForSelect, 'state-unsorted', true);
+                    squaresDiv.appendChild(selectEl);
+                    currentNumberElementsForRow.push(selectEl);
+                }
+                insertion_allNumberElementsInRows.push(currentNumberElementsForRow);
+                rowDiv.appendChild(squaresDiv);
+
+                if (i < numElements - 1) { // Buttons only for actual passes
+                    const button = document.createElement('button');
+                    button.className = 'execute-btn';
+                    button.dataset.passIndex = i;
+                    button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>';
+                    button.disabled = true;
+                    button.addEventListener('click', insertion_handleExecute);
+                    insertion_allExecuteButtons[i] = button;
+                    rowDiv.appendChild(button);
+                }
+
+                const statusSpan = document.createElement('span');
+                statusSpan.className = 'status-text';
+                statusSpan.id = `insertion-status-${i}`;
+                insertion_allStatusTexts[i] = statusSpan;
+                rowDiv.appendChild(statusSpan);
+                insertion_sortContainer.appendChild(rowDiv);
+                insertion_allRowsElements.push(rowDiv);
+            }
+        }
+
+        function insertion_prepareStepUI(passIdx, arrayToDisplay) {
+            // ... (isAutoRunning時のstateClassesを変更)
+            const numElements = arrayToDisplay.length;
+            if (passIdx >= numElements - 1 || passIdx < 0) return; // No step to prepare if only one element or less, or invalid pass
+
+            const currentRowElement = insertion_allRowsElements[passIdx];
+            if (!currentRowElement) return;
+            currentRowElement.classList.add('visible');
+
+            const keyOriginalIndex = passIdx + 1;
+            const currentSelectsInRow = insertion_allNumberElementsInRows[passIdx];
+            const optionsForThisStep = insertion_allPossibleOptionsForSelect;
+            const currentElementStatesForBarGraph = [];
+
+            currentSelectsInRow.forEach((selectEl, colIndex) => {
+                let valueToDisplay = arrayToDisplay[colIndex];
+                let currentIsDisabled;
+                let stateClasses = '';
+
+                if (isAutoRunning) {
+                    currentIsDisabled = true;
+                    if (colIndex <= passIdx) stateClasses = 'state-sorted';
+                    else if (colIndex === keyOriginalIndex) stateClasses = 'state-key'; // Highlight the key for auto-run
+                    else stateClasses = 'state-unsorted';
+                } else {
+                    // Manual mode interaction logic
+                    if (colIndex <= passIdx) { // Sorted part, potential drop targets
+                        currentIsDisabled = false; stateClasses = 'state-interactive-swap-target';
+                    } else if (colIndex === keyOriginalIndex) { // Key element
+                        currentIsDisabled = false; stateClasses = 'state-interactive-swap-source';
+                    } else { // Untouched unsorted part
+                        currentIsDisabled = true; stateClasses = 'state-unsorted';
+                    }
+                }
+                currentElementStatesForBarGraph[colIndex] = stateClasses;
+
+                const newSelectEl = insertion_createSelectElement(selectEl.id, valueToDisplay, optionsForThisStep, stateClasses, currentIsDisabled);
+                selectEl.parentNode.replaceChild(newSelectEl, selectEl);
+                currentSelectsInRow[colIndex] = newSelectEl;
+            });
+
+            if (insertion_allExecuteButtons[passIdx]) {
+                insertion_allExecuteButtons[passIdx].disabled = isAutoRunning || (passIdx !== insertion_currentPass);
+            }
+            if (insertion_allStatusTexts[passIdx]) {
+                insertion_allStatusTexts[passIdx].textContent = '';
+                insertion_allStatusTexts[passIdx].className = 'status-text';
+            }
+            renderBarGraph(arrayToDisplay, currentElementStatesForBarGraph);
+        }
+
+        function insertion_displayAllSorted(sortedArray) {
+            // ... (変更なし)
+            const numElements = sortedArray.length;
+            if (numElements === 0) {
+                insertion_sortContainer.innerHTML = '<div class="empty-array-message">ソート完了 (空の配列)</div>';
+                renderBarGraph([], []);
+                return;
+            }
+
+            const finalDisplayRowIdx = Math.max(0, numElements - 1); // Handles single element array
+
+            if (insertion_allRowsElements[finalDisplayRowIdx]) {
+                insertion_allRowsElements[finalDisplayRowIdx].classList.add('visible');
+                const selectsInFinalRow = insertion_allNumberElementsInRows[finalDisplayRowIdx];
+                if (selectsInFinalRow) {
+                    selectsInFinalRow.forEach((select, colIndex) => {
+                        const finalValue = sortedArray[colIndex];
+                        const newSelectEl = insertion_createSelectElement(select.id, finalValue, [finalValue], 'state-final-orange', true);
+                        if (select.parentNode) {
+                            select.parentNode.replaceChild(newSelectEl, select);
+                        }
+                    });
+                }
+                if (insertion_allStatusTexts[finalDisplayRowIdx]) {
+                    insertion_allStatusTexts[finalDisplayRowIdx].textContent = '完了';
+                    insertion_allStatusTexts[finalDisplayRowIdx].className = 'status-text status-complete';
+                }
+                // Hide execute button for the last "pass" row if it exists (e.g. if numElements > 1)
+                if (numElements > 1 && insertion_allExecuteButtons[finalDisplayRowIdx - 1]) { // Button is on pass N-2 for array of N
+                    // insertion_allExecuteButtons[finalDisplayRowIdx] does not exist.
+                    // The last button is on pass numElements-2
+                }
+            } else if (numElements === 1 && insertion_initialArray.length === 1) {
+                const initialRow = insertion_sortContainer.querySelector('.initial-array-row .number-squares');
+                if (initialRow && initialRow.children[0]) {
+                    const selectEl = initialRow.children[0];
+                    const newSelectEl = insertion_createSelectElement(selectEl.id, sortedArray[0], [sortedArray[0]], 'state-final-orange', true);
+                    selectEl.parentNode.replaceChild(newSelectEl, selectEl);
+                }
+                if (!insertion_sortContainer.querySelector('.status-complete')) {
+                    const completeMsgDiv = document.createElement('div');
+                    completeMsgDiv.className = 'step-row visible'; // Make it visible
+                    const statusSpan = document.createElement('span');
+                    statusSpan.className = 'status-text status-complete';
+                    statusSpan.textContent = '完了';
+                    // For single element, there are no generated step rows to append to.
+                    // So, create a simple status message.
+                    if (insertion_sortContainer.children.length > 0 && insertion_sortContainer.lastChild.classList.contains('initial-array-row')) {
+                        insertion_sortContainer.lastChild.appendChild(statusSpan); // Append to initial row for tidiness
+                    } else {
+                        completeMsgDiv.appendChild(statusSpan);
+                        insertion_sortContainer.appendChild(completeMsgDiv);
+                    }
+                }
+            }
+            renderBarGraph(sortedArray, sortedArray.map(() => 'state-final-orange'));
+        }
+
+        function insertion_handleExecute(event) {
+            // ... (変更なし)
+            if (isAutoRunning) return;
+
+            const button = event.currentTarget;
+            const passIdxOfButton = parseInt(button.dataset.passIndex);
+            if (passIdxOfButton !== insertion_currentPass) return;
+
+            const numElements = insertion_currentArray.length;
+            const currentStatusText = insertion_allStatusTexts[insertion_currentPass];
+            const userSelectedRowState = [];
+            const selectsInCurrentRow = insertion_allNumberElementsInRows[insertion_currentPass];
+
+            selectsInCurrentRow.forEach(selectEl => {
+                userSelectedRowState.push(Number(selectEl.value));
+            });
+
+            let tempArrayForCalculation = [...insertion_currentArray];
+            const keyToInsert = tempArrayForCalculation[insertion_currentPass + 1];
+            let j = insertion_currentPass;
+            while (j >= 0 && tempArrayForCalculation[j] > keyToInsert) {
+                tempArrayForCalculation[j + 1] = tempArrayForCalculation[j];
+                j--;
+            }
+            tempArrayForCalculation[j + 1] = keyToInsert;
+            const expectedRowStateAfterCorrectInsertion = tempArrayForCalculation;
+
+            let isUserSetupCorrect = true;
+            for (let i = 0; i < numElements; i++) {
+                if (userSelectedRowState[i] !== expectedRowStateAfterCorrectInsertion[i]) {
+                    isUserSetupCorrect = false;
+                    break;
+                }
+            }
+
+            const elementStatesForBarGraph = [];
+
+            if (isUserSetupCorrect) {
+                currentStatusText.textContent = 'OK';
+                currentStatusText.className = 'status-text status-ok';
+                button.disabled = true;
+                insertion_currentArray = [...expectedRowStateAfterCorrectInsertion];
+
+                const keyOriginalIndexForStyling = insertion_currentPass + 1;
+                insertion_allNumberElementsInRows[insertion_currentPass].forEach((sel, idx) => {
+                    const finalValueInCell = insertion_currentArray[idx];
+                    let cellStateClass = (idx <= keyOriginalIndexForStyling) ? 'state-sorted' : 'state-unsorted';
+                    elementStatesForBarGraph[idx] = cellStateClass;
+
+                    const newSelectEl = insertion_createSelectElement(sel.id, finalValueInCell, [finalValueInCell], cellStateClass, true);
+                    sel.parentNode.replaceChild(newSelectEl, sel);
+                });
+                renderBarGraph(insertion_currentArray, elementStatesForBarGraph);
+
+                insertion_currentPass++;
+                if (insertion_currentPass < numElements - 1) {
+                    if (insertion_allRowsElements[insertion_currentPass]) insertion_allRowsElements[insertion_currentPass].classList.add('visible');
+                    insertion_prepareStepUI(insertion_currentPass, insertion_currentArray);
+                } else {
+                    insertion_displayAllSorted(insertion_currentArray);
+                }
+            } else {
+                currentStatusText.textContent = 'エラー';
+                currentStatusText.className = 'status-text status-error';
+                const userAttemptStates = [];
+                insertion_allNumberElementsInRows[insertion_currentPass].forEach((sel, idx) => {
+                    const classList = sel.className.split(' ');
+                    userAttemptStates[idx] = classList.find(cls => cls.startsWith('state-')) || 'state-unsorted';
+                });
+                renderBarGraph(userSelectedRowState, userAttemptStates);
+            }
+        }
+
+        function insertion_initializeSortProcess() {
+            // ... (autoRunTimeoutId クリア追加)
+            if (isAutoRunning) {
+                clearTimeout(autoRunTimeoutId);
+                autoRunTimeoutId = null;
+                isAutoRunning = false;
+            }
+
+            insertion_initialArray = [...sharedInitialArray];
+            insertion_initialArray = insertion_initialArray.map(item => {
+                const num = Number(item);
+                return isNaN(num) ? 0 : num;
+            });
+            insertion_currentArray = [...insertion_initialArray];
+            insertion_currentPass = 0;
+
+            insertion_generateRows();
+
+            const numElements = insertion_currentArray.length;
+            if (numElements > 1) { // Only prepare if there's at least one pass
+                insertion_prepareStepUI(0, insertion_currentArray);
+            } else { // 0 or 1 element, already sorted
+                insertion_displayAllSorted(insertion_currentArray);
+            }
+
+            if (autoRunButton) {
+                autoRunButton.disabled = (numElements <= 1);
+                autoRunButton.textContent = '実行';
+            }
+            if (resetButton) resetButton.disabled = false;
+            if (speedSlider) speedSlider.disabled = false;
+        }
+
+        // --- Auto Run Functions ---
+        function resetSortProcess() {
+            if (isAutoRunning) {
+                toggleAutoRun(); // Will stop auto run
+            }
+            isAutoRunning = false; // Ensure flag is reset
+            if (autoRunButton) autoRunButton.textContent = '実行';
+            clearTimeout(autoRunTimeoutId); // Clear any pending timeout
+            autoRunTimeoutId = null;
+
+            insertion_initializeSortProcess();
+            if (autoRunButton) autoRunButton.disabled = (insertion_currentArray.length <= 1);
+            if (resetButton) resetButton.disabled = false;
+            if (speedSlider) speedSlider.disabled = false;
+        }
+
+        function toggleAutoRun() {
+            if (isAutoRunning) { // Stop
+                isAutoRunning = false;
+                clearTimeout(autoRunTimeoutId);
+                autoRunTimeoutId = null;
+                if (autoRunButton) autoRunButton.textContent = '実行';
+                if (resetButton) resetButton.disabled = false;
+                if (speedSlider) speedSlider.disabled = false;
+
+                if (insertion_currentPass < insertion_currentArray.length - 1 && insertion_allExecuteButtons[insertion_currentPass]) {
+                    insertion_allExecuteButtons[insertion_currentPass].disabled = false;
+                }
+                insertion_allExecuteButtons.forEach((btn, idx) => {
+                    if (btn && idx !== insertion_currentPass) {
+                        btn.disabled = true;
+                    }
+                });
+            } else { // Start
+                if (insertion_currentArray.length <= 1 || insertion_currentPass >= insertion_currentArray.length - 1) {
+                    insertion_displayAllSorted(insertion_currentArray);
+                    if (autoRunButton) autoRunButton.disabled = true;
+                    return;
+                }
+                isAutoRunning = true;
+                if (autoRunButton) autoRunButton.textContent = '停止';
+                if (resetButton) resetButton.disabled = true;
+                // speedSlider.disabled = true; // Optional
+
+                insertion_allExecuteButtons.forEach(btn => { if (btn) btn.disabled = true; });
+
+                insertion_prepareStepUI(insertion_currentPass, insertion_currentArray); // Prepare for the current pass animation
+                runSingleAutoStepAnimation(); // Start the animation loop
+            }
+        }
+
+        async function runSingleAutoStepAnimation() {
+            if (!isAutoRunning) return;
+
+            await autoRunStep(); // Perform one pass of animation
+
+            if (isAutoRunning && insertion_currentPass < insertion_currentArray.length - 1) {
+                // Schedule the next animation step. currentSpeed is the total time for one pass animation.
+                autoRunTimeoutId = setTimeout(runSingleAutoStepAnimation, currentSpeed);
+            } else if (isAutoRunning) { // Sorting completed or only one element left
+                isAutoRunning = false; // Update flag
+                if (autoRunButton) {
+                    autoRunButton.textContent = '実行';
+                    autoRunButton.disabled = true; // Sorting complete
+                }
+                if (resetButton) resetButton.disabled = false;
+                // speedSlider.disabled = false;
+                insertion_displayAllSorted(insertion_currentArray); // Ensure final state is shown
+            }
+        }
+
+        async function updateVisualsForStep(passIndex, array, elementStates, isPassComplete = false) {
+            // 1. Update select elements in the row
+            if (insertion_allRowsElements[passIndex] && insertion_allNumberElementsInRows[passIndex]) {
+                insertion_allRowsElements[passIndex].classList.add('visible');
+                const selectsInRow = insertion_allNumberElementsInRows[passIndex];
+                selectsInRow.forEach((selectEl, colIndex) => {
+                    const value = array[colIndex];
+                    const stateClass = elementStates[colIndex] || 'state-unsorted';
+                    const newSelectEl = insertion_createSelectElement(selectEl.id, value, insertion_allPossibleOptionsForSelect, stateClass, true); // Always disabled during auto-run
+                    selectEl.parentNode.replaceChild(newSelectEl, selectEl);
+                    selectsInRow[colIndex] = newSelectEl;
+                });
+            }
+
+            // 2. Update bar graph
+            renderBarGraph(array, elementStates);
+
+            // 3. Update status text if pass is complete
+            if (isPassComplete && insertion_allStatusTexts[passIndex]) {
+                insertion_allStatusTexts[passIndex].textContent = 'OK';
+                insertion_allStatusTexts[passIndex].className = 'status-text status-ok';
+                if (insertion_allExecuteButtons[passIndex]) { // Button for this pass
+                    insertion_allExecuteButtons[passIndex].disabled = true;
+                }
+            }
+        }
+
+
+        async function autoRunStep() {
+            const passToAnimate = insertion_currentPass;
+            const numElements = insertion_currentArray.length;
+
+            if (passToAnimate >= numElements - 1 || numElements <= 1) {
+                insertion_displayAllSorted(insertion_currentArray);
+                // toggleAutoRun will be handled by runSingleAutoStepAnimation if needed
+                return;
+            }
+
+            const keyElementOriginalIndex = passToAnimate + 1;
+            const keyVal = insertion_currentArray[keyElementOriginalIndex];
+
+            let tempArrayForDisplay = [...insertion_currentArray];
+            let currentElementStates = tempArrayForDisplay.map((_, idx) => {
+                if (idx <= passToAnimate) return 'state-sorted';
+                if (idx === keyElementOriginalIndex) return 'state-key';
+                return 'state-unsorted';
+            });
+
+            // Step 0: Initial state of the pass (key highlighted)
+            if (insertion_allRowsElements[passToAnimate]) insertion_allRowsElements[passToAnimate].classList.add('visible');
+            await updateVisualsForStep(passToAnimate, tempArrayForDisplay, currentElementStates);
+            await delay(currentSpeed * 0.2); // 20% of total time for this step
+
+            let j = passToAnimate; // Index for comparing in sorted part
+
+            while (j >= 0 && tempArrayForDisplay[j] > keyVal) {
+                // Step 2a: Highlight comparison
+                currentElementStates[j] = 'state-compare';
+                currentElementStates[keyElementOriginalIndex] = 'state-key'; // Keep key highlighted
+                // Ensure other states are correct
+                for (let k = 0; k < tempArrayForDisplay.length; k++) {
+                    if (k !== j && k !== keyElementOriginalIndex) {
+                        if (k < j) currentElementStates[k] = 'state-sorted'; // Left of compare
+                        else if (k > j && k < keyElementOriginalIndex) currentElementStates[k] = 'state-sorted'; // Between compare and key
+                        else if (k > keyElementOriginalIndex) currentElementStates[k] = 'state-unsorted'; // Right of key
+                    }
+                }
+                await updateVisualsForStep(passToAnimate, tempArrayForDisplay, currentElementStates);
+                await delay(currentSpeed * 0.25); // 25%
+
+                // Step 2b: Show shifting element
+                currentElementStates[j] = 'state-shifting';
+                // The element at j+1 will receive the value from j
+                // currentElementStates[j+1] = 'state-insert-target'; // Optional: highlight shift target
+                tempArrayForDisplay[j + 1] = tempArrayForDisplay[j]; // Perform shift in display array
+                await updateVisualsForStep(passToAnimate, tempArrayForDisplay, currentElementStates);
+                await delay(currentSpeed * 0.25); // 25%
+
+                // After shift, the new tempArrayForDisplay[j+1] is part of sorted segment
+                currentElementStates[j + 1] = 'state-sorted';
+                // Reset j's state for next comparison or if loop ends
+                if (j > 0 && tempArrayForDisplay[j - 1] <= keyVal) currentElementStates[j] = 'state-sorted';
+                else if (j === 0 && tempArrayForDisplay[j] <= keyVal) currentElementStates[j] = 'state-sorted';
+
+
+                j--;
+            }
+
+            // Step 3: Insert key
+            const insertPos = j + 1;
+            tempArrayForDisplay[insertPos] = keyVal;
+
+            currentElementStates = tempArrayForDisplay.map((_, idx) => {
+                if (idx <= keyElementOriginalIndex) return 'state-sorted'; // Up to where key was originally
+                return 'state-unsorted';
+            });
+            currentElementStates[insertPos] = 'state-key-inserted'; // Highlight the newly inserted key
+
+            await updateVisualsForStep(passToAnimate, tempArrayForDisplay, currentElementStates);
+            await delay(currentSpeed * 0.3); // 30%
+
+            // Step 4: Finalize pass state (update real array, normal sorted colors)
+            insertion_currentArray = [...tempArrayForDisplay];
+            currentElementStates = insertion_currentArray.map((_, idx) => {
+                if (idx <= keyElementOriginalIndex) return 'state-sorted';
+                return 'state-unsorted';
+            });
+            await updateVisualsForStep(passToAnimate, insertion_currentArray, currentElementStates, true /*isPassComplete*/);
+            // No delay here, as this is the end of the pass animation. The overall `currentSpeed` timeout handles the pause before the next pass.
+
+            insertion_currentPass++; // Move to next pass
+
+            // Prepare UI for the *next* pass if auto-running continues
+            if (isAutoRunning && insertion_currentPass < numElements - 1) {
+                insertion_prepareStepUI(insertion_currentPass, insertion_currentArray);
+            }
+        }
+
+
+        // --- Global Initialization ---
+        function initializeAll() {
+            //sharedInitialArray = [3, 2, 5, 1, 4];
+            sharedInitialArray = [5, 2, 8, 1, 4, 7, 3, 6];
+            // sharedInitialArray = [3,1,2];
+            // sharedInitialArray = [];
+            // sharedInitialArray = [5];
+
+            const leftPane = document.querySelector('.left-pane');
+            if (leftPane && !leftPane.querySelector('h3')) {
+                // Content already added in HTML
+            }
+            insertion_initializeSortProcess();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            autoRunButton = document.getElementById('auto-run-button');
+            resetButton = document.getElementById('reset-button');
+            speedSlider = document.getElementById('speed-slider');
+            speedValueDisplay = document.getElementById('speed-value');
+
+            if (autoRunButton) autoRunButton.addEventListener('click', toggleAutoRun);
+            if (resetButton) resetButton.addEventListener('click', resetSortProcess);
+            if (speedSlider) {
+                speedSlider.addEventListener('input', () => {
+                    currentSpeed = parseInt(speedSlider.value);
+                    if (speedValueDisplay) speedValueDisplay.textContent = '×' + (currentSpeed / 2000).toFixed(1); // 表示を修正
+                });
+                currentSpeed = parseInt(speedSlider.value);
+                if (speedValueDisplay) speedValueDisplay.textContent = '×' + (currentSpeed / 2000).toFixed(1); // 表示を修正
+            }
+
+            initializeAll();
+        });
+    </script>
+
+</body>
+
+</html>

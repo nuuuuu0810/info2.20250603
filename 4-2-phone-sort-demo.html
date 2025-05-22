@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>通話履歴ソート体験 (選択ソートビジュアライザー)</title>
+    <style>
+        /* === 全体構造 (変更なし) === */
+        html, body { height: 100%; margin: 0; overflow: hidden; }
+        body { font-family: 'Roboto', 'Helvetica Neue', Arial, sans-serif; background-color: #FFF; display: flex; flex-direction: column; }
+        .main-container { display: flex; flex-grow: 1; overflow: hidden; padding: 5px; gap: 5px; }
+        .left-pane { flex: 5; padding: 8px; background-color: #ffffff; border: 1px solid #ccc; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box; }
+        .right-pane { flex: 5; padding: 8px; background-color: #ffffff;  border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box; }
+        .left-pane-fixed-header { overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box; }
+
+        /* === 左ペイン: 通話履歴ヘッダー === */
+        .history-header { /* contacts-header から変更 */
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+            box-sizing: border-box;
+            display: flex; /* タイトルと検索バーを横並びにするため */
+            align-items: center; /* 垂直中央揃え */
+            padding-left: 16px; /* 左側の余白 */
+            padding-right: 8px;
+        }
+        .history-header h1 { /* 新しいタイトルスタイル */
+            font-size: 1.3em;
+            color: #202124;
+            margin: 0 16px 0 0; /* 右マージンで検索バーと分離 */
+            font-weight: 500;
+        }
+        .history-search-bar { /* contacts-search-bar から変更 */
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            border: 1px solid #dadce0;
+            border-radius: 28px;
+            background-color: #f1f3f4;
+            flex-grow: 1; /* 残りのスペースを埋める */
+        }
+        .history-search-bar:focus-within { background-color: #fff; border-color: #a6caff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .history-search-bar input { flex-grow: 1; border: none; outline: none; font-size: 0.95em; background-color: transparent; color: #202124; margin-left: 10px; }
+        .history-search-bar input::placeholder { color: #5f6368; }
+        .search-icons-mock { display: flex; align-items: center; color: #5f6368; }
+        .search-icons-mock .icon-span { display: inline-flex; align-items: center; justify-content: center; padding: 0 8px; cursor: pointer; user-select: none; border-radius: 50%; }
+        .search-icons-mock .icon-span:hover { background-color: rgba(0,0,0,0.05); }
+        .search-icons-mock svg { fill: #5f6368; height: 22px; width: 22px; display: block; }
+        
+        /* === 左ペイン: ソートコントロールと通話履歴リスト === */
+        .sort-controls {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0 8px 8px 8px;
+            box-sizing: border-box;
+            min-height: 40px;
+        }
+        .sort-controls label { margin-right: 6px; font-weight: 500; font-size: 0.8em; color: #3c4043; }
+        .sort-controls select { padding: 5px 8px; border-radius: 4px; border: 1px solid #dadce0; font-size: 0.8em; background-color: #fff; }
+
+        #call-history-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            position: relative;
+            box-sizing: border-box;
+            padding: 0px 8px 8px 8px;
+        }
+        .history-item {
+            border-bottom: 1px solid #e8eaed;
+            padding: 10px 12px;
+            margin-bottom: 0;
+            border-radius: 0;
+            background-color: #fff;
+            transition: border-color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
+            min-height: 65px;
+            display: flex;
+            align-items: center;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        .history-item:last-child { border-bottom: none; }
+        .history-item-icon { margin-right: 12px; flex-shrink: 0; }
+        .history-item-icon svg { width: 20px; height: 20px; display: block; }
+        .history-item-info { flex-grow: 1; overflow: hidden; }
+        .history-item-info h3 { margin-top: 0; margin-bottom: 2px; color: #202124; font-size: 0.9em; line-height: 1.3; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .history-item-info p { margin-top: 0; margin-bottom: 1px; font-size: 0.8em; line-height: 1.3; color: #5f6368; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .history-item-meta { margin-left: auto; font-size: 0.75em; color: #5f6368; flex-shrink: 0; padding-left: 10px; text-align: right; white-space: nowrap;}
+        .history-item.comparing { border-left: 4px solid #ffdd57; background-color: #fff9e0; }
+        .history-item.comparing2 { border-left: 4px solid #add8e6; background-color: #e0f2f7; }
+        .history-item.minimum { border: 2px solid #ff6b6b !important; background-color: #ffe0e0; }
+        .history-item.sorted { border-left: 4px solid #66bb6a; background-color: #e8f5e9; }
+        .history-item.swapping { box-shadow: 0 0 8px 2px #f06292; }
+
+        /* === 右ペイン: ビジュアライザー === */
+        #visualizer-container {
+            display: flex; 
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+            flex-grow: 1;
+        }
+        #visualizer-controls-header { display: flex; flex-direction: column; width: 100%; padding: 8px 10px; background-color: #ffffff; box-sizing: border-box; }
+        .controls-row { width: 100%; box-sizing: border-box; }
+        .top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .bottom-row { display: flex; justify-content: center; align-items: center; }
+        .header-left-controls button,
+        .header-right-controls label,
+        .header-right-controls input[type="range"],
+        .header-right-controls span { padding: 6px 10px; border-radius: 4px; font-size: 0.75em; margin: 0 3px; }
+        .header-left-controls button { background-color: #1a73e8; color: white; border: none; cursor: pointer; transition: background-color 0.2s; font-weight: 500; }
+        .header-left-controls button:hover { background-color: #185abc; }
+        .header-left-controls button:disabled { background-color: #bdbdbd; cursor: not-allowed; }
+        #status-text-area { text-align: center; font-size: 0.85em; color: #3c4043; padding: 4px 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .header-right-controls { display: flex; align-items: center; }
+        #speed-control-container { display: flex; align-items: center; gap: 4px; }
+        #speed-control-container label { margin-right: 2px; font-size: 0.75em; color: #3c4043;}
+        #sort-key-selector-container { display: none; }
+
+        #bar-chart-area { display: flex; flex-direction: column; width: 100%; flex-grow: 1; overflow-y: auto; padding: 8px; box-sizing: border-box; border-radius: 4px; position: relative; }
+        .bar-container { display: flex; align-items: center; margin-bottom: 3px; height: 65px; box-sizing: border-box; padding-top: 3px; padding-bottom: 3px; }
+        .bar-label { min-width: 35px; font-size: 0.7em; color: #3c4043; text-align: right; margin-right: 4px; font-weight: 500; white-space: nowrap; }
+        .bar { height: 45px; flex-grow: 1; background-color: #e0e0e0; transition: background-color 0.3s ease, border-color 0.3s ease; display: flex; justify-content: center; align-items: center; padding: 0 6px; box-sizing: border-box; border-radius: 3px; font-size: 0.75em; overflow: hidden; cursor: default; color: #202124; white-space: nowrap; text-overflow: ellipsis; border: 2px solid transparent; }
+        .bar.comparing { background-color: #ffeb84; color: #333; }
+        .bar.comparing2 { background-color: #cce8f3; color: #333; }
+        .bar.minimum { border: 2px solid #e57373; background-color: #ffebee; color: #333;}
+        .bar.sorted { background-color: #a5d6a7; border: 2px solid transparent; color: #1b5e20; }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="left-pane">
+            <div class="left-pane-fixed-header">
+                <div class="history-header">
+                    <div class="history-search-bar">
+                        <span class="search-icons-mock">
+                            <span class="icon-span" aria-label="検索" role="button" tabindex="0">
+                               <svg focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>
+                            </span>
+                        </span>
+                        <input type="text" placeholder="履歴を検索" aria-label="履歴を検索">
+                        <span class="search-icons-mock">
+                            <span class="icon-span" aria-label="その他オプション" role="button" tabindex="0">
+                                 <svg focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path></svg>
+                            </span>
+                        </span>
+                    </div>
+                </div>
+                <div class="sort-controls">
+                    <label for="sort-by">表示順序:</label>
+                    <select id="sort-by">
+                        <!-- オプションはJSで動的に設定 -->
+                    </select>
+                </div>
+            </div>
+            <div id="call-history-list">
+                <!-- 通話履歴リストはここにJSで生成 -->
+            </div>
+        </div>
+
+        <div class="right-pane">
+            <div id="visualizer-container">
+                <div id="visualizer-controls-header">
+                    <div class="controls-row top-row">
+                        <div class="header-left-controls">
+                            <button id="start-pause-button">開始</button>
+                            <button id="reset-button">リセット</button>
+                        </div>
+                        <div class="header-right-controls">
+                            <div id="speed-control-container">
+                                <label for="speed-slider">速度:</label>
+                                <input type="range" id="speed-slider" min="0.1" max="2" step="0.1" value="1">
+                                <span id="speed-value">x1.0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="controls-row bottom-row">
+                        <div id="status-text-area">
+                            <!-- ステータスはここにJSで表示 -->
+                        </div>
+                    </div>
+                    <div id="sort-key-selector-container" style="display:none;">
+                         <select id="sort-key-selector">
+                            <!-- オプションはJSで動的に設定 (ビジュアライザー内部用) -->
+                         </select>
+                    </div>
+                </div>
+                <div id="bar-chart-area">
+                    <!-- 棒グラフはここにJSで生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- グローバルヘルパー関数 ---
+        window.formatDateForDisplay = function(dateTimeString) {
+            const date = new Date(dateTimeString);
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+
+            const time = date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+
+            if (date.getFullYear() === today.getFullYear() &&
+                date.getMonth() === today.getMonth() &&
+                date.getDate() === today.getDate()) {
+                return `今日 ${time}`;
+            } else if (date.getFullYear() === yesterday.getFullYear() &&
+                       date.getMonth() === yesterday.getMonth() &&
+                       date.getDate() === yesterday.getDate()) {
+                return `昨日 ${time}`;
+            } else {
+                if (date.getFullYear() !== today.getFullYear()) {
+                    return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} ${time}`;
+                } else {
+                    return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} ${time}`;
+                }
+            }
+        };
+
+        window.formatPhoneNumberForDisplay = function(phoneString) {
+            if (typeof phoneString === 'string' && phoneString.length >= 11) { // 例: "090-1111-2222" (13文字)
+                return `${phoneString.substring(0, 3)}...${phoneString.slice(-4)}`;
+            }
+            return phoneString;
+        };
+
+        window.getCallTypeIcon = function(type) {
+            if (type === "着信") return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#1a73e8"><path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57-.35-.11-.74-.03-1.02.24l-2.2 2.2c-2.83-1.44-5.15-3.75-6.59-6.59l2.2-2.21c.28-.26.36-.65.25-1C8.7 6.45 8.5 5.25 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1z"/></svg>`;
+            if (type === "発信") return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#34a853"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1-.45 1-1V15c0-9.39-7.61-17-17-17-.55 0-1 .45-1 1v3.5c0 .55.45 1 1 1 .36 0 .71.07 1.05.18l2.52 2.52c.25.25.65.25.9 0l1.13-1.13zM4 4h12.5C16.5 11.89 10.39 18 2.5 18V5.5L4 4z"/></svg>`;
+            if (type === "不在着信") return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#ea4335"><path d="m6.545 21.031-.89-.89L11.109 14H2.5v-1.5h10.031L6.859 6.828l.891-.89L19.5 12.688Zm0 0"/></svg>`;
+            return '';
+        };
+
+        window.compareItems = function(itemA, itemB, keyBase, order) {
+            let valA = itemA[keyBase]; let valB = itemB[keyBase];
+            if (keyBase === 'dateTime') { valA = new Date(valA).getTime(); valB = new Date(valB).getTime(); }
+            if ((keyBase === 'name' || keyBase === 'phone') && typeof valA === 'string' && typeof valB === 'string') { return order === 'asc' ? valA.localeCompare(valB, 'ja') : valB.localeCompare(valA, 'ja'); }
+            return order === 'asc' ? valA - valB : valB - valA;
+        };
+        
+        window.renderHistoryListForLeftPane = function(items, highlightItemIds = {}) {
+            const historyListContainer = document.getElementById('call-history-list');
+            const leftItemElementsMap = window.leftItemElementsMap || new Map(); // Ensure it's accessible or passed
+            historyListContainer.innerHTML = '';
+            items.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'history-item';
+                itemDiv.dataset.id = item.id;
+                
+                const displayDateTime = window.formatDateForDisplay(item.dateTime);
+                const displayPhone = window.formatPhoneNumberForDisplay(item.phone);
+
+                const iconHtml = `<div class="history-item-icon">${window.getCallTypeIcon(item.type)}</div>`;
+                const infoHtml = `<div class="history-item-info"><h3>${item.name}</h3><p>${displayPhone}</p></div>`;
+                const metaHtml = `<div class="history-item-meta">${displayDateTime}</div>`;
+                itemDiv.innerHTML = iconHtml + infoHtml + metaHtml;
+                
+                if (highlightItemIds.comparing1ItemId === item.id) itemDiv.classList.add('comparing');
+                if (highlightItemIds.comparing2ItemId === item.id) itemDiv.classList.add('comparing2');
+                if (highlightItemIds.minimumItemId === item.id) itemDiv.classList.add('minimum');
+                if (highlightItemIds.sortedItemIds && highlightItemIds.sortedItemIds.includes(item.id)) itemDiv.classList.add('sorted');
+                if (highlightItemIds.swappingItemIds && highlightItemIds.swappingItemIds.includes(item.id)) itemDiv.classList.add('swapping');
+                historyListContainer.appendChild(itemDiv);
+                leftItemElementsMap.set(item.id, itemDiv);
+            });
+            window.leftItemElementsMap = leftItemElementsMap; // Store it back if needed by other parts
+        };
+        // --- END グローバルヘルパー関数 ---
+
+        const callHistoryData = [
+            { id: 201, name: "木村 花子", phone: "090-1111-2222", dateTime: "2025-06-01T14:35:00", type: "着信" },    // 当日
+            { id: 202, name: "吉田 健太", phone: "080-3333-4444", dateTime: "2025-06-03T11:10:00", type: "発信" },    // 当日
+            { id: 203, name: "山田 さくら", phone: "070-5555-6666", dateTime: "2025-06-02T18:50:00", type: "不在着信" },// 昨日
+            { id: 204, name: "阿部 太郎", phone: "090-7777-8888", dateTime: "2025-06-02T15:22:00", type: "着信" },    // 昨日
+            { id: 205, name: "斎藤 直樹", phone: "080-9999-0000", dateTime: "2025-06-03T20:05:00", type: "発信" },    // 2日前
+            { id: 206, name: "井上 真理", phone: "070-1234-5678", dateTime: "2025-06-01T09:40:00", type: "着信" },    // 数日前 (同月)
+            { id: 207, name: "小川 圭介", phone: "090-8765-4321", dateTime: "2025-06-01T17:15:00", type: "不在着信" },// 数ヶ月前 (同年)
+            { id: 208, name: "林 愛美", phone: "080-1010-2020", dateTime: "2025-06-03T13:00:00", type: "発信" },    // 前年
+            { id: 209, name: "清水 大輔", phone: "070-3030-4040", dateTime: "2025-06-02T22:30:00", type: "着信" },    // 前年
+            { id: 210, name: "森 千夏", phone: "090-5050-6060", dateTime: "2025-06-01T10:00:00", type: "不在着信" } // 数年前
+        ];
+
+        const historyListContainer = document.getElementById('call-history-list');
+        const sortBySelectForLeftPane = document.getElementById('sort-by');
+        const visualizerContainer = document.getElementById('visualizer-container');
+        const vizSortKeySelector = document.getElementById('sort-key-selector');
+
+        const leftPane = document.querySelector('.left-pane');
+        const rightPane = document.querySelector('.right-pane');
+        const leftPaneFixedHeader = document.querySelector('.left-pane-fixed-header');
+        const visualizerControlsHeader = document.getElementById('visualizer-controls-header');
+        
+        window.leftItemElementsMap = new Map(); // Moved to global scope for access by renderHistoryListForLeftPane
+
+        function updateHeaderHeights() {
+            if (leftPane && leftPaneFixedHeader) {
+                const leftPaneHeight = leftPane.offsetHeight;
+                if (leftPaneHeight > 0) {
+                    const newLeftHeaderHeight = leftPaneHeight / 7.3;
+                    leftPaneFixedHeader.style.height = `${newLeftHeaderHeight}px`;
+                }
+            }
+            if (rightPane && visualizerControlsHeader) {
+                const rightPaneHeight = rightPane.offsetHeight;
+                if (rightPaneHeight > 0) {
+                    const newRightHeaderHeight = rightPaneHeight / 7.6;
+                    visualizerControlsHeader.style.height = `${newRightHeaderHeight}px`;
+                }
+            }
+        }
+
+        function updateSortOptions() {
+            sortBySelectForLeftPane.innerHTML = '';
+            vizSortKeySelector.innerHTML = '';
+
+            const optionsHtml = `
+                <option value="dateTime_default_desc">日時 (新しい順)</option>
+                <option value="dateTime_default_asc">日時 (古い順)</option>
+                <option value="name_default_asc">名前 (昇順)</option>
+                <option value="name_default_desc">名前 (降順)</option>
+                <option value="phone_default_asc">電話番号 (昇順)</option>
+                <option value="phone_default_desc">電話番号 (降順)</option>
+            `;
+            sortBySelectForLeftPane.innerHTML = optionsHtml;
+            vizSortKeySelector.innerHTML = optionsHtml.replace(/_default_/g, '_');
+        }
+
+
+        (function() { // IIFE for sort visualizer logic
+            'use strict';
+            const barChartArea = document.getElementById('bar-chart-area');
+            const startPauseButton = document.getElementById('start-pause-button');
+            const resetButton = document.getElementById('reset-button');
+            const speedSlider = document.getElementById('speed-slider');
+            const speedValueDisplay = document.getElementById('speed-value');
+            const statusTextArea = document.getElementById('status-text-area');
+
+            let currentDataToSort = [];
+            let barElementsMap = new Map();
+            // let leftItemElementsMap = new Map(); // Now global: window.leftItemElementsMap
+
+            let animationSpeedFactor = 1;
+            let currentTimeoutId = null;
+            let isSorting = false;
+            let isPaused = false;
+            let sortGenerator = null;
+
+            let currentSortKeyFromUI = '';
+            const BASE_DELAY = 500;
+
+            function convertHighlightIndicesToItemIds(highlightIndices, dataArray) {
+                const idHighlights = { sortedItemIds: [], swappingItemIds: [] };
+                if (highlightIndices.comparing1 !== undefined && dataArray[highlightIndices.comparing1]) idHighlights.comparing1ItemId = dataArray[highlightIndices.comparing1].id;
+                if (highlightIndices.comparing2 !== undefined && dataArray[highlightIndices.comparing2]) idHighlights.comparing2ItemId = dataArray[highlightIndices.comparing2].id;
+                if (highlightIndices.minimum !== undefined && dataArray[highlightIndices.minimum]) idHighlights.minimumItemId = dataArray[highlightIndices.minimum].id;
+                if (highlightIndices.sortedBoundary !== undefined) { for (let i = 0; i <= highlightIndices.sortedBoundary; i++) { if (dataArray[i]) idHighlights.sortedItemIds.push(dataArray[i].id); } }
+                if (highlightIndices.swapping) { highlightIndices.swapping.forEach(idx => { if (dataArray[idx]) idHighlights.swappingItemIds.push(dataArray[idx].id); }); }
+                return idHighlights;
+            }
+
+            function getBarDisplayValue(item, keyBase) {
+                const value = item[keyBase];
+                if (keyBase === 'name') { const maxLength = 10; return typeof value === 'string' && value.length > maxLength ? value.substring(0, maxLength - 2) + ".." : value; }
+                if (keyBase === 'dateTime') return window.formatDateForDisplay(value); // Use new formatter
+                /*if (keyBase === 'phone') return window.formatPhoneNumberForDisplay(value); // Use new formatter*/
+                 if (keyBase === 'phone') return value; // Use new formatter
+                return `ID:${item.id}`;
+            }
+
+            function propertyToSortKeyLabel(selectedKeyWithValue) {
+                const parts = selectedKeyWithValue.split('_');
+                const keyBase = parts[0]; const order = parts[1];
+                let label = "";
+                if (keyBase === 'name') label += "名前";
+                else if (keyBase === 'dateTime') label += "日時";
+                else if (keyBase === 'phone') label += "電話番号";
+                else label += "ID";
+                if (order === 'asc') label += " (昇順)"; else if (order === 'desc') label += " (降順)";
+                return `通話履歴: ${label}`;
+            }
+
+            function drawBothPanes(highlightIndices = {}) {
+                barChartArea.innerHTML = '';
+                barElementsMap.clear();
+                const sortKeyBase = currentSortKeyFromUI.split('_')[0];
+                currentDataToSort.forEach((item, index) => {
+                    const barContainer = document.createElement('div');
+                    barContainer.className = 'bar-container';
+                    barContainer.dataset.id = item.id;
+                    const labelSpan = document.createElement('div');
+                    labelSpan.className = 'bar-label';
+                    labelSpan.textContent = item.name.split(' ')[0];
+                    const bar = document.createElement('div');
+                    bar.className = 'bar';
+                    bar.textContent = getBarDisplayValue(item, sortKeyBase); // Uses new formatters
+                    bar.title = `${item.name} (${item[sortKeyBase]})`; // Tooltip shows original value
+                    if (highlightIndices.comparing1 === index) bar.classList.add('comparing');
+                    if (highlightIndices.comparing2 === index) bar.classList.add('comparing2');
+                    if (highlightIndices.minimum === index) bar.classList.add('minimum');
+                    if (highlightIndices.sortedBoundary !== undefined && index <= highlightIndices.sortedBoundary) bar.classList.add('sorted');
+                    if (highlightIndices.swapping && highlightIndices.swapping.includes(index)) { barContainer.classList.add('swapping'); barContainer.style.boxShadow = '0 0 8px 1px #f06292'; } else { barContainer.style.boxShadow = ''; }
+                    barContainer.appendChild(labelSpan); barContainer.appendChild(bar); barChartArea.appendChild(barContainer); barElementsMap.set(item.id, barContainer);
+                });
+                const highlightItemIds = convertHighlightIndicesToItemIds(highlightIndices, currentDataToSort);
+                window.renderHistoryListForLeftPane(currentDataToSort, highlightItemIds); // Uses new formatters via global func
+            }
+
+            async function animateSwap(idx1, idx2) {
+                const item1Id = currentDataToSort[idx1].id; const item2Id = currentDataToSort[idx2].id;
+                const barEl1 = barElementsMap.get(item1Id); const barEl2 = barElementsMap.get(item2Id);
+                const leftItemEl1 = window.leftItemElementsMap.get(item1Id); const leftItemEl2 = window.leftItemElementsMap.get(item2Id);
+                if (!barEl1 || !barEl2 || !leftItemEl1 || !leftItemEl2) return;
+                const swapDuration = (BASE_DELAY / animationSpeedFactor) * 0.35;
+                const barRect1 = barEl1.getBoundingClientRect(); const barRect2 = barEl2.getBoundingClientRect(); const yDiffBar = barRect1.top - barRect2.top;
+                const leftRect1 = leftItemEl1.getBoundingClientRect(); const leftRect2 = leftItemEl2.getBoundingClientRect(); const yDiffLeft = leftRect1.top - leftRect2.top;
+                barEl1.style.transition = `transform ${swapDuration}ms ease-in-out`; barEl2.style.transition = `transform ${swapDuration}ms ease-in-out`; barEl1.style.zIndex = '10'; barEl2.style.zIndex = '10'; barEl1.style.transform = `translateY(${-yDiffBar}px)`; barEl2.style.transform = `translateY(${yDiffBar}px)`;
+                leftItemEl1.style.transition = `transform ${swapDuration}ms ease-in-out`; leftItemEl2.style.transition = `transform ${swapDuration}ms ease-in-out`; leftItemEl1.style.zIndex = '1000'; leftItemEl2.style.zIndex = '1000'; leftItemEl1.style.transform = `translateY(${-yDiffLeft}px)`; leftItemEl2.style.transform = `translateY(${yDiffLeft}px)`;
+                await new Promise(resolve => setTimeout(resolve, swapDuration + 50));
+                barEl1.style.transform = ''; barEl2.style.transform = ''; barEl1.style.zIndex = ''; barEl2.style.zIndex = ''; barEl1.style.transition = ''; barEl2.style.transition = '';
+                leftItemEl1.style.transform = ''; leftItemEl2.style.transform = ''; leftItemEl1.style.zIndex = ''; leftItemEl2.style.zIndex = ''; leftItemEl1.style.transition = ''; leftItemEl2.style.transition = '';
+            }
+
+            function updateStatus(text) { statusTextArea.innerHTML = text; }
+            async function delay() { return new Promise(resolve => { currentTimeoutId = setTimeout(resolve, BASE_DELAY / animationSpeedFactor); }); }
+
+            // compareItems is now global: window.compareItems
+
+            async function* selectionSortGenerator() {
+                let arr = [...currentDataToSort]; let n = arr.length;
+                const [fixedSortKeyBase, fixedSortOrder] = currentSortKeyFromUI.split('_');
+                for (let i = 0; i < n - 1; i++) {
+                    let extremumIdx = i; currentDataToSort = [...arr]; drawBothPanes({ comparing1: i, sortedBoundary: i - 1 });
+                    updateStatus(`ステップ ${i + 1}: <b>${getBarDisplayValue(arr[i], fixedSortKeyBase)}</b> を${fixedSortOrder === 'asc' ? '最小' : '最大'}候補に`);
+                    await delay(); if (isPaused) yield 'paused'; if (!isSorting) return;
+                    for (let j = i + 1; j < n; j++) {
+                        drawBothPanes({ comparing1: extremumIdx, comparing2: j, sortedBoundary: i - 1 });
+                        updateStatus(`比較: 候補 <b>${getBarDisplayValue(arr[extremumIdx], fixedSortKeyBase)}</b> と <b>${getBarDisplayValue(arr[j], fixedSortKeyBase)}</b>`);
+                        await delay(); if (isPaused) yield 'paused'; if (!isSorting) return;
+                        const comparisonResult = window.compareItems(arr[j], arr[extremumIdx], fixedSortKeyBase, fixedSortOrder);
+                        if (comparisonResult < 0) { extremumIdx = j; drawBothPanes({ minimum: extremumIdx, comparing2: j, sortedBoundary: i - 1 }); updateStatus(`新${fixedSortOrder === 'asc' ? '最小' : '最大'}候補: <b>${getBarDisplayValue(arr[extremumIdx], fixedSortKeyBase)}</b>`); await delay(); if (isPaused) yield 'paused'; if (!isSorting) return; }
+                    }
+                    if (extremumIdx !== i) {
+                        updateStatus(`交換: <b>${getBarDisplayValue(arr[i], fixedSortKeyBase)}</b> と <b>${getBarDisplayValue(arr[extremumIdx], fixedSortKeyBase)}</b>`);
+                        currentDataToSort = [...arr]; drawBothPanes({ swapping: [i, extremumIdx], sortedBoundary: i - 1 });
+                        await animateSwap(i, extremumIdx); if (isPaused) yield 'paused'; if (!isSorting) return;
+                        [arr[i], arr[extremumIdx]] = [arr[extremumIdx], arr[i]]; currentDataToSort = [...arr]; drawBothPanes({ sortedBoundary: i });
+                        updateStatus(`交換完了。位置 ${i} 確定: <b>${getBarDisplayValue(arr[i], fixedSortKeyBase)}</b>`);
+                    } else { updateStatus(`位置 ${i} (<b>${getBarDisplayValue(arr[i], fixedSortKeyBase)}</b>) は既に正しい。`); currentDataToSort = [...arr]; drawBothPanes({ sortedBoundary: i }); }
+                    await delay(); if (isPaused) yield 'paused'; if (!isSorting) return;
+                }
+                currentDataToSort = [...arr]; drawBothPanes({ sortedBoundary: currentDataToSort.length -1 }); updateStatus("ソート完了！"); return arr;
+            }
+            async function runSortStep() { if (!isSorting || isPaused) return; try { const result = await sortGenerator.next(); if (result.value === 'paused') return; if (result.done) { isSorting = false; startPauseButton.textContent = "開始"; startPauseButton.disabled = true; resetButton.disabled = false; } else if (isSorting && !isPaused) { runSortStep(); } } catch (error) { console.error("Sort step error:", error); updateStatus("エラーが発生しました。リセットしてください。"); window.stopSortVisualizer(); } }
+            function startSort() { if (isSorting && !isPaused) return; isSorting = true; isPaused = false; startPauseButton.textContent = "一時停止"; resetButton.disabled = true; if (!sortGenerator) { sortGenerator = selectionSortGenerator(); } runSortStep(); }
+            function pauseSort() { if (!isSorting || isPaused) return; isPaused = true; clearTimeout(currentTimeoutId); startPauseButton.textContent = "再開"; resetButton.disabled = false; updateStatus("一時停止中..."); }
+            function resumeSort() { if (!isSorting || !isPaused) return; isPaused = false; startPauseButton.textContent = "一時停止"; resetButton.disabled = true; updateStatus("再開します..."); runSortStep(); }
+            window.stopSortVisualizer = function() { isSorting = false; isPaused = true; clearTimeout(currentTimeoutId); sortGenerator = null; startPauseButton.textContent = "開始"; startPauseButton.disabled = false; resetButton.disabled = false; }
+
+            window.initSortVisualizer = function(initialData, sortKeyBase, sortOrder) {
+                window.stopSortVisualizer();
+                currentDataToSort = JSON.parse(JSON.stringify(initialData)).sort(() => 0.5 - Math.random());
+                currentSortKeyFromUI = `${sortKeyBase}_${sortOrder}`;
+                drawBothPanes();
+                const sortLabel = propertyToSortKeyLabel(currentSortKeyFromUI);
+                updateStatus(`選択ソート: 「${sortLabel}」<br>「開始」ボタンでソートを開始します。`);
+                startPauseButton.disabled = false; isSorting = false; isPaused = false;
+                updateHeaderHeights();
+            };
+
+            startPauseButton.addEventListener('click', () => {
+                if (!currentSortKeyFromUI) {
+                    updateStatus("まず左のドロップダウンで表示順序を選択してください。");
+                    return;
+                }
+                if (!isSorting) startSort();
+                else if (isPaused) resumeSort();
+                else pauseSort();
+            });
+            resetButton.addEventListener('click', () => { window.handleSortSelection(); });
+            speedSlider.addEventListener('input', (e) => { animationSpeedFactor = parseFloat(e.target.value); speedValueDisplay.textContent = `x${animationSpeedFactor.toFixed(1)}`; });
+        })(); // End of IIFE
+
+        window.handleSortSelection = function() {
+            const sortByValue = sortBySelectForLeftPane.value;
+            const [property, type, order] = sortByValue.split('_');
+            let sortedDataForInitialLeftDisplay = JSON.parse(JSON.stringify(callHistoryData));
+            if (type === 'default') { sortedDataForInitialLeftDisplay.sort((a, b) => window.compareItems(a, b, property, order)); }
+            window.renderHistoryListForLeftPane(sortedDataForInitialLeftDisplay); // Initial render uses new formatters
+            window.initSortVisualizer(callHistoryData, property, order);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateSortOptions(); 
+            sortBySelectForLeftPane.value = 'dateTime_default_desc'; // Default sort
+            sortBySelectForLeftPane.addEventListener('change', () => { window.handleSortSelection(); });
+            window.handleSortSelection(); // Initial call to setup based on default
+            updateHeaderHeights();
+        });
+        window.addEventListener('resize', updateHeaderHeights);
+    </script>
+</body>
+</html>

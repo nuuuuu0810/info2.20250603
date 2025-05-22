@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>検索結果ソート体験 (選択ソートビジュアライザー)</title>
+    <style>
+        /* === 全体構造 === */
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden; /* ページ全体のスクロールバーを消す */
+        }
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #FFF;
+            display: flex;
+            flex-direction: column;
+        }
+        .main-container {
+            display: flex;
+            flex-grow: 1; /* bodyの残りの高さを全て使う */
+            overflow: hidden; /* main-container自体のスクロールを抑制 */
+            padding: 5px;
+            gap: 5px;
+        }
+        .left-pane {
+            flex: 5;
+            padding: 8px;
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+        .right-pane {
+            flex: 5;
+            padding: 8px;
+            background-color: #ffffff;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        /* 左ペイン上部固定ヘッダー */
+        .left-pane-fixed-header {
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            /* height はJSで設定 */
+        }
+
+        /* === 左ペイン: 検索ヘッダー === */
+        .search-header-mock {
+            padding-bottom: 8px;
+            border-bottom: 1px solid #ebebeb;
+            margin-bottom: 6px;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+        .search-bar-mock {
+            display: flex;
+            align-items: center;
+            padding: 6px 10px;
+            border: 1px solid #dfe1e5;
+            border-radius: 24px;
+            box-shadow: 0 1px 6px rgba(32,33,36,0.08);
+            margin-bottom: 10px;
+        }
+        .search-bar-mock:hover {
+            box-shadow: 0 1px 6px rgba(32,33,36,0.15);
+        }
+        .search-bar-mock input {
+            flex-grow: 1;
+            border: none;
+            outline: none;
+            font-size: 0.9em;
+            background-color: transparent;
+            color: #333;
+            margin-left: 8px;
+        }
+        .search-bar-mock input::placeholder {
+            color: #70757a;
+        }
+        .search-icons-mock {
+            display: flex;
+            align-items: center;
+            color: #70757a;
+        }
+        .search-icons-mock .icon-span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 6px;
+            cursor: default;
+            user-select: none;
+        }
+         .search-icons-mock .icon-span:first-child {
+            padding-left: 2px;
+        }
+        .search-icons-mock .icon-span.separator {
+            width: 1px;
+            height: 20px;
+            background-color: #dfe1e5;
+            margin: 0 4px;
+            padding: 0;
+        }
+        .search-icons-mock svg {
+            fill: #5f6368;
+            height: 20px;
+            width: 20px;
+            display: block;
+        }
+        .search-tabs-mock {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            font-size: 0.75em;
+            color: #5f6368;
+        }
+        .search-tabs-mock span {
+            cursor: default;
+            padding-bottom: 3px;
+        }
+        .search-tabs-mock span.active {
+            color: #1a73e8;
+            border-bottom: 2px solid #1a73e8;
+            font-weight: 500;
+        }
+        .search-tabs-mock .tools-mock {
+            margin-left: auto;
+            padding-left: 10px;
+        }
+
+        /* === 左ペイン: ソートコントロールと検索結果 === */
+        .sort-controls {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            box-sizing: border-box;
+        }
+        .sort-controls label { margin-right: 4px; font-weight: bold; font-size: 0.75em; }
+        .sort-controls select { padding: 4px; border-radius: 2px; border: 1px solid #ddd; font-size: 0.75em; }
+
+        #search-results {
+            flex-grow: 1;
+            overflow-y: auto;
+            position: relative;
+            box-sizing: border-box;
+            padding: 6px;
+        }
+        .result-item {
+            border: 1px solid #eee;
+            padding: 3px 6px;
+            margin-bottom: 3px;
+            border-radius: 2px;
+            background-color: #fff;
+            box-shadow: 0 0 1px rgba(0,0,0,0.05);
+            transition: border-color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
+            height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        .result-item h3 {
+            margin-top: 0;
+            margin-bottom: 2px;
+            color: #0056b3;
+            font-size: 0.8em;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .result-item p {
+            margin-top: 0;
+            margin-bottom: 1px;
+            font-size: 0.7em;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .result-item .url {
+            color: #006621;
+            display: block;
+        }
+        .result-item .meta {
+            color: #777;
+            font-size: 0.65em;
+        }
+        .result-item.comparing { border-left: 3px solid #ffdd57; background-color: #fff9e0; }
+        .result-item.comparing2 { border-left: 3px solid #add8e6; background-color: #e0f2f7; }
+        .result-item.minimum { border: 2px solid #ff6b6b !important; background-color: #ffe0e0; }
+        .result-item.sorted {
+            border-left: 3px solid #4caf50;
+            background-color: #e8f5e9;
+        }
+        .result-item.swapping {
+            box-shadow: 0 0 8px 2px #f06292;
+        }
+
+        /* === 右ペイン: ビジュアライザー === */
+        #visualizer-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+            flex-grow: 1;
+        }
+        #visualizer-container.active { display: flex; }
+
+        #visualizer-controls-header {
+            display: flex;
+            flex-direction: column; /* 要素を縦に並べる */
+            width: 100%;
+            padding: 8px 10px;
+            background-color: #ffffff;
+            box-sizing: border-box;
+            /* height はJSで設定 */
+        }
+
+        /* 新しい行コンテナの共通スタイル */
+        .controls-row {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* 1行目のスタイル */
+        .top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px; /* 1行目と2行目の間のスペース */
+        }
+
+        /* 2行目のスタイル */
+        .bottom-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .header-left-controls button,
+        .header-right-controls label,
+        .header-right-controls input[type="range"],
+        .header-right-controls span {
+            padding: 4px 7px;
+            border-radius: 2px;
+            font-size: 0.7em;
+            margin: 0 2px;
+        }
+        .header-left-controls button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .header-left-controls button:hover {
+            background-color: #0056b3;
+        }
+        .header-left-controls button:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+        }
+
+        #status-text-area {
+            text-align: center;
+            font-size: 0.8em;
+            color: #333;
+            padding: 2px 0; /* 上下のパディングを少し調整 */
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+        .header-right-controls {
+            display: flex;
+            align-items: center;
+        }
+        #speed-control-container {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        #speed-control-container label { margin-right: 1px;}
+        #sort-key-selector-container { display: none; }
+
+
+        #bar-chart-area {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 6px;
+            box-sizing: border-box;
+            background-color: #f9f9f9;
+            border-radius: 3px;
+            position: relative;
+        }
+        .bar-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 3px;
+            height: 60px; /* 固定高さの例 */
+            box-sizing: border-box;
+            padding-top: 3px;
+            padding-bottom: 3px;
+        }
+        .bar-label {
+            min-width: 30px; /* 固定最小幅の例 */
+            font-size: 0.65em;
+            color: #333;
+            text-align: right;
+            margin-right: 3px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .bar {
+            height: 44px; /* 固定高さの例 */
+            flex-grow: 1;
+            background-color: #ccc;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 5px;
+            box-sizing: border-box;
+            border-radius: 2px;
+            font-size: 0.7em;
+            overflow: hidden;
+            cursor: default;
+            color: #111;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            border: 2px solid transparent;
+        }
+
+        .bar.comparing { background-color: #ffdd57; color: #333; }
+        .bar.comparing2 { background-color: #add8e6; color: #333; }
+        .bar.minimum { border: 2px solid #ff6b6b; background-color: #ffe0e0; color: #333;}
+        .bar.sorted {
+            background-color: #81C784;
+            border: 2px solid transparent;
+            color: #111;
+            /* calc() を % にするのは複雑なので、このままか別のアプローチが必要 */
+            padding-left: calc(5px - (3px - 2px));
+        }
+        .bar-container.swapping .bar {
+             /* スタイル追加なし */
+        }
+
+        #right-pane-placeholder {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: #777;
+            height: 100%;
+            font-size: 0.85em;
+        }
+        #right-pane-placeholder.hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="left-pane">
+            <div class="left-pane-fixed-header">
+                <div class="search-header-mock">
+                    <div class="search-bar-mock">
+                        <input type="text" value="検索システムのデモ" placeholder="検索" aria-label="検索">
+                        <span class="search-icons-mock">
+                            <span class="icon-span" aria-label="音声検索" role="button" tabindex="0">
+                                <svg focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"></path></svg>
+                            </span>
+                            <span class="icon-span" aria-label="クリア" role="button" tabindex="0">
+                                 <svg focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+                            </span>
+                            <span class="icon-span" aria-label="画像で検索" role="button" tabindex="0">
+                                <svg focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                    <path d="M3.5 5h17A1.5 1.5 0 0 1 22 6.5v11A1.5 1.5 0 0 1 20.5 19h-17A1.5 1.5 0 0 1 2 17.5v-11A1.5 1.5 0 0 1 3.5 5z M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zm0-2a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
+                                </svg>
+                            </span>
+                            <span class="icon-span separator" role="separator"></span>
+                            <span class="icon-span" aria-label="検索" role="button" tabindex="0">
+                                <svg focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>
+                            </span>
+                        </span>
+                    </div>
+                    <div class="search-tabs-mock">
+                        <span class="active">すべて</span>
+                        <span>ショッピング</span>
+                        <span>画像</span>
+                        <span>動画</span>
+                        <span>ニュース</span>
+                        <span>ショート動画</span>
+                        <span>地図</span>
+                        <span>もっと見る</span>
+                        <!-- <span class="tools-mock">ツール</span> -->
+                    </div>
+                </div>
+
+                <div class="sort-controls">
+                    <label for="sort-by">並び替え:</label>
+                    <select id="sort-by">
+                        <option value="date_default_desc">新しい順</option>
+                        <option value="date_default_asc">古い順</option>
+                        <option value="title_default_asc">タイトル昇順</option>
+                        <option value="title_default_desc">タイトル降順</option>
+                    </select>
+                </div>
+            </div>
+            <div id="search-results">
+                <!-- 検索結果はここにJSで生成 -->
+            </div>
+        </div>
+
+        <div class="right-pane">
+            <div id="right-pane-placeholder">
+                <p>左のドロップダウンから並び替え方法を選択すると、<br>選択ソートのデモがここに表示されます。</p>
+            </div>
+            <div id="visualizer-container">
+                <div id="visualizer-controls-header">
+                    <!-- 1行目: 操作ボタンと速度調整 -->
+                    <div class="controls-row top-row">
+                        <div class="header-left-controls">
+                            <button id="start-pause-button">開始</button>
+                            <button id="reset-button">リセット</button>
+                        </div>
+                        <div class="header-right-controls">
+                            <div id="speed-control-container">
+                                <label for="speed-slider">速度:</label>
+                                <input type="range" id="speed-slider" min="0.1" max="2" step="0.1" value="1">
+                                <span id="speed-value">x1.0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 2行目: ステータステキスト -->
+                    <div class="controls-row bottom-row">
+                        <div id="status-text-area">
+                            <!-- ステータスはここにJSで表示 -->
+                        </div>
+                    </div>
+                    <!-- 非表示のソートキーセレクタ (変更なし) -->
+                    <div id="sort-key-selector-container" style="display:none;">
+                         <select id="sort-key-selector">
+                            <option value="id_asc">ID (昇順)</option>
+                            <option value="id_desc">ID (降順)</option>
+                            <option value="title_asc">タイトル (昇順)</option>
+                            <option value="title_desc">タイトル (降順)</option>
+                            <option value="date_asc">日付 (古い順)</option>
+                            <option value="date_desc">日付 (新しい順)</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="bar-chart-area">
+                    <!-- 棒グラフはここにJSで生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const initialSearchData = [
+            { id: 1, title: "HTMLの基本と構造", snippet: "HyperText Markup Language...", url: "example.com/html", date: "2023-01-15" },
+            { id: 2, title: "CSS入門: スタイリングの基礎", snippet: "Cascading Style Sheets...", url: "example.com/css", date: "2023-03-20" },
+            { id: 3, title: "JavaScriptとは何か？動的なウェブページ作成", snippet: "Dynamic client-side scripting...", url: "example.com/js", date: "2022-11-10" },
+            { id: 4, title: "最新ウェブデザインのトレンド 2024", snippet: "Modern web design patterns...", url: "example.com/webdesign", date: "2024-01-05" },
+            { id: 5, title: "ウェブアクセシビリティ実践ガイド", snippet: "Making web accessible to all...", url: "example.com/accessibility", date: "2023-06-01" },
+            { id: 6, title: "SEOの基礎知識と検索エンジン最適化", snippet: "Search Engine Optimization...", url: "example.com/seo", date: "2023-09-22" },
+            { id: 7, title: "UI/UXデザインの重要な原則とは", snippet: "User Interface and User Experience...", url: "example.com/uiux", date: "2022-05-15" },
+            { id: 8, title: "Reactコンポーネント入門", snippet: "Building user interfaces with React...", url: "example.com/react", date: "2023-10-10" },
+            { id: 9, title: "Vue.js プログレッシブフレームワーク", snippet: "An approachable, performant and versatile framework...", url: "example.com/vue", date: "2023-07-01" },
+            { id: 10, title: "Angular 完全ガイド", snippet: "Platform for building mobile and desktop web applications...", url: "example.com/angular", date: "2022-09-05" },
+        ];
+
+        const resultsContainerForLeftPane = document.getElementById('search-results');
+        const sortBySelectForLeftPane = document.getElementById('sort-by');
+        const rightPanePlaceholder = document.getElementById('right-pane-placeholder');
+        const visualizerContainer = document.getElementById('visualizer-container');
+        const vizSortKeySelector = document.getElementById('sort-key-selector');
+
+        const leftPane = document.querySelector('.left-pane');
+        const rightPane = document.querySelector('.right-pane');
+        const leftPaneFixedHeader = document.querySelector('.left-pane-fixed-header');
+        const visualizerControlsHeader = document.getElementById('visualizer-controls-header');
+
+        function updateHeaderHeights() {
+            if (leftPane && leftPaneFixedHeader) {
+                const leftPaneHeight = leftPane.offsetHeight;
+                if (leftPaneHeight > 0) {
+                    const newLeftHeaderHeight = leftPaneHeight / 6.5; // 1 / (1 + 5.5)
+                    leftPaneFixedHeader.style.height = `${newLeftHeaderHeight}px`;
+                }
+            }
+
+            if (rightPane && visualizerControlsHeader) {
+                if (visualizerContainer.classList.contains('active')) {
+                    const rightPaneHeight = rightPane.offsetHeight;
+                    if (rightPaneHeight > 0) {
+                        const newRightHeaderHeight = rightPaneHeight / 6.5; // 1 / (1 + 5.5)
+                        visualizerControlsHeader.style.height = `${newRightHeaderHeight}px`;
+                    }
+                } else {
+                    visualizerControlsHeader.style.height = '';
+                }
+            }
+        }
+
+
+        // --- 右ペイン: ビジュアライザーと左ペイン同期のJavaScript ---
+        (function() {
+            'use strict';
+            const barChartArea = document.getElementById('bar-chart-area');
+            const startPauseButton = document.getElementById('start-pause-button');
+            const resetButton = document.getElementById('reset-button');
+            const speedSlider = document.getElementById('speed-slider');
+            const speedValueDisplay = document.getElementById('speed-value');
+            const statusTextArea = document.getElementById('status-text-area');
+
+            let currentDataToSort = [];
+            let barElementsMap = new Map();
+            let leftItemElementsMap = new Map();
+
+            let animationSpeedFactor = 1;
+            let currentTimeoutId = null;
+            let isSorting = false;
+            let isPaused = false;
+            let sortGenerator = null;
+
+            let currentSortKeyFromUI = 'date_desc';
+            const BASE_DELAY = 500;
+
+            function convertHighlightIndicesToItemIds(highlightIndices, dataArray) {
+                const idHighlights = { sortedItemIds: [], swappingItemIds: [] };
+                if (highlightIndices.comparing1 !== undefined && dataArray[highlightIndices.comparing1]) {
+                    idHighlights.comparing1ItemId = dataArray[highlightIndices.comparing1].id;
+                }
+                if (highlightIndices.comparing2 !== undefined && dataArray[highlightIndices.comparing2]) {
+                    idHighlights.comparing2ItemId = dataArray[highlightIndices.comparing2].id;
+                }
+                if (highlightIndices.minimum !== undefined && dataArray[highlightIndices.minimum]) {
+                    idHighlights.minimumItemId = dataArray[highlightIndices.minimum].id;
+                }
+                if (highlightIndices.sortedBoundary !== undefined) {
+                    for (let i = 0; i <= highlightIndices.sortedBoundary; i++) {
+                        if (dataArray[i]) idHighlights.sortedItemIds.push(dataArray[i].id);
+                    }
+                }
+                 if (highlightIndices.swapping) {
+                    highlightIndices.swapping.forEach(idx => {
+                        if (dataArray[idx]) idHighlights.swappingItemIds.push(dataArray[idx].id);
+                    });
+                }
+                return idHighlights;
+            }
+
+            function renderResultsForLeftPane(items, highlightItemIds = {}) {
+                resultsContainerForLeftPane.innerHTML = '';
+                leftItemElementsMap.clear();
+
+                items.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'result-item';
+                    itemDiv.dataset.id = item.id;
+                    itemDiv.innerHTML = `<h3><a href="${item.url}" target="_blank" title="${item.title}">${item.title}</a></h3><p class="url">${item.url}</p><p class="meta">公開日: ${item.date} | ID: ${item.id}</p>`;
+
+                    if (highlightItemIds.comparing1ItemId === item.id) itemDiv.classList.add('comparing');
+                    if (highlightItemIds.comparing2ItemId === item.id) itemDiv.classList.add('comparing2');
+                    if (highlightItemIds.minimumItemId === item.id) itemDiv.classList.add('minimum');
+                    if (highlightItemIds.sortedItemIds && highlightItemIds.sortedItemIds.includes(item.id)) itemDiv.classList.add('sorted');
+                    if (highlightItemIds.swappingItemIds && highlightItemIds.swappingItemIds.includes(item.id)) itemDiv.classList.add('swapping');
+
+                    resultsContainerForLeftPane.appendChild(itemDiv);
+                    leftItemElementsMap.set(item.id, itemDiv);
+                });
+            }
+
+            function getBarDisplayValue(item, keyBase) {
+                const value = item[keyBase];
+                if (keyBase === 'title') {
+                    const maxLength = 12;
+                    return typeof value === 'string' && value.length > maxLength ? value.substring(0, maxLength - 2) + ".." : value;
+                }
+                if (keyBase === 'date') return value;
+                return `ID:${item.id}`;
+            }
+
+            function propertyToSortKeyLabel(selectedKeyWithValue) {
+                const parts = selectedKeyWithValue.split('_');
+                const keyBase = parts[0]; const order = parts[1];
+                let label = "";
+                if (keyBase === 'title') label += "タイトル";
+                else if (keyBase === 'date') label += "日付";
+                else label += "ID";
+                if (order === 'asc') label += " (昇順)";
+                else if (order === 'desc') label += " (降順)";
+                return label;
+            }
+
+            function drawBothPanes(highlightIndices = {}) {
+                barChartArea.innerHTML = '';
+                barElementsMap.clear();
+                const sortKeyBase = currentSortKeyFromUI.split('_')[0];
+
+                currentDataToSort.forEach((item, index) => {
+                    const barContainer = document.createElement('div');
+                    barContainer.className = 'bar-container';
+                    barContainer.dataset.id = item.id;
+
+                    const labelSpan = document.createElement('div');
+                    labelSpan.className = 'bar-label';
+                    labelSpan.textContent = `ID:${item.id}`;
+
+                    const bar = document.createElement('div');
+                    bar.className = 'bar';
+                    bar.textContent = getBarDisplayValue(item, sortKeyBase);
+
+                    if (highlightIndices.comparing1 === index) bar.classList.add('comparing');
+                    if (highlightIndices.comparing2 === index) bar.classList.add('comparing2');
+                    if (highlightIndices.minimum === index) bar.classList.add('minimum');
+                    
+                    if (highlightIndices.sortedBoundary !== undefined && index <= highlightIndices.sortedBoundary) {
+                        bar.classList.add('sorted');
+                    }
+                    
+                    if (highlightIndices.swapping && highlightIndices.swapping.includes(index)) {
+                        barContainer.classList.add('swapping');
+                        barContainer.style.boxShadow = '0 0 8px 1px #f06292'; /* px単位のまま */
+                    } else {
+                        barContainer.style.boxShadow = '';
+                    }
+
+                    barContainer.appendChild(labelSpan);
+                    barContainer.appendChild(bar);
+                    barChartArea.appendChild(barContainer);
+                    barElementsMap.set(item.id, barContainer);
+                });
+
+                const highlightItemIds = convertHighlightIndicesToItemIds(highlightIndices, currentDataToSort);
+                renderResultsForLeftPane(currentDataToSort, highlightItemIds);
+            }
+
+            async function animateSwap(idx1, idx2) {
+                const item1Id = currentDataToSort[idx1].id;
+                const item2Id = currentDataToSort[idx2].id;
+
+                const barEl1 = barElementsMap.get(item1Id);
+                const barEl2 = barElementsMap.get(item2Id);
+                const leftItemEl1 = leftItemElementsMap.get(item1Id);
+                const leftItemEl2 = leftItemElementsMap.get(item2Id);
+
+                if (!barEl1 || !barEl2 || !leftItemEl1 || !leftItemEl2) return;
+
+                const swapDuration = (BASE_DELAY / animationSpeedFactor) * 0.35;
+
+                const barRect1 = barEl1.getBoundingClientRect();
+                const barRect2 = barEl2.getBoundingClientRect();
+                const yDiffBar = barRect1.top - barRect2.top; /* px差 */
+
+                const leftRect1 = leftItemEl1.getBoundingClientRect();
+                const leftRect2 = leftItemEl2.getBoundingClientRect();
+                const yDiffLeft = leftRect1.top - leftRect2.top; /* px差 */
+
+                barEl1.style.transition = `transform ${swapDuration}ms ease-in-out`;
+                barEl2.style.transition = `transform ${swapDuration}ms ease-in-out`;
+                barEl1.style.zIndex = '10'; barEl2.style.zIndex = '10';
+                barEl1.style.transform = `translateY(${-yDiffBar}px)`; /* px単位のまま */
+                barEl2.style.transform = `translateY(${yDiffBar}px)`; /* px単位のまま */
+
+                leftItemEl1.style.transition = `transform ${swapDuration}ms ease-in-out`;
+                leftItemEl2.style.transition = `transform ${swapDuration}ms ease-in-out`;
+                leftItemEl1.style.zIndex = '1000'; leftItemEl2.style.zIndex = '1000';
+                leftItemEl1.style.transform = `translateY(${-yDiffLeft}px)`; /* px単位のまま */
+                leftItemEl2.style.transform = `translateY(${yDiffLeft}px)`; /* px単位のまま */
+
+                await new Promise(resolve => setTimeout(resolve, swapDuration + 50)); /* ms */
+
+                barEl1.style.transform = ''; barEl2.style.transform = '';
+                barEl1.style.zIndex = ''; barEl2.style.zIndex = '';
+                barEl1.style.transition = ''; barEl2.style.transition = '';
+
+                leftItemEl1.style.transform = ''; leftItemEl2.style.transform = '';
+                leftItemEl1.style.zIndex = ''; leftItemEl2.style.zIndex = '';
+                leftItemEl1.style.transition = ''; leftItemEl2.style.transition = '';
+            }
+
+            function updateStatus(text) { statusTextArea.innerHTML = text; }
+            async function delay() { return new Promise(resolve => { currentTimeoutId = setTimeout(resolve, BASE_DELAY / animationSpeedFactor); }); }
+
+            function compareItems(itemA, itemB, keyBase, order) {
+                let valA = itemA[keyBase]; let valB = itemB[keyBase];
+                if (keyBase === 'date') { valA = new Date(valA).getTime(); valB = new Date(valB).getTime(); }
+
+                if (typeof valA === 'string' && typeof valB === 'string') {
+                    return order === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                }
+                return order === 'asc' ? valA - valB : valB - valA;
+            }
+
+            async function* selectionSortGenerator() {
+                let arr = [...currentDataToSort];
+                let n = arr.length;
+                const [fixedSortKeyBase, fixedSortOrder] = currentSortKeyFromUI.split('_');
+
+                for (let i = 0; i < n - 1; i++) {
+                    let extremumIdx = i;
+                    currentDataToSort = [...arr]; 
+                    drawBothPanes({ comparing1: i, sortedBoundary: i - 1 });
+                    updateStatus(`パス ${i + 1}: 候補 <b>${getBarDisplayValue(arr[i], fixedSortKeyBase)}</b> を${fixedSortOrder === 'asc' ? '最小' : '最大'}値とする`);
+                    await delay(); if (isPaused) yield 'paused'; if (!isSorting) return;
+
+                    for (let j = i + 1; j < n; j++) {
+                        drawBothPanes({ comparing1: extremumIdx, comparing2: j, sortedBoundary: i - 1 });
+                        updateStatus(`比較: 候補 <b>${getBarDisplayValue(arr[extremumIdx], fixedSortKeyBase)}</b> と 対象 <b>${getBarDisplayValue(arr[j], fixedSortKeyBase)}</b>`);
+                        await delay(); if (isPaused) yield 'paused'; if (!isSorting) return;
+
+                        const comparisonResult = compareItems(arr[j], arr[extremumIdx], fixedSortKeyBase, fixedSortOrder);
+                        if (comparisonResult < 0) {
+                            extremumIdx = j;
+                            drawBothPanes({ minimum: extremumIdx, comparing2: j, sortedBoundary: i - 1 });
+                            updateStatus(`新${fixedSortOrder === 'asc' ? '最小' : '最大'}値候補: <b>${getBarDisplayValue(arr[extremumIdx], fixedSortKeyBase)}</b>`);
+                            await delay(); if (isPaused) yield 'paused'; if (!isSorting) return;
+                        }
+                    }
+
+                    if (extremumIdx !== i) {
+                        updateStatus(`交換: <b>${getBarDisplayValue(arr[i], fixedSortKeyBase)}</b> と <b>${getBarDisplayValue(arr[extremumIdx], fixedSortKeyBase)}</b>`);
+                        currentDataToSort = [...arr]; 
+                        drawBothPanes({ swapping: [i, extremumIdx], sortedBoundary: i - 1 });
+                        await animateSwap(i, extremumIdx); 
+                        if (isPaused) yield 'paused'; if (!isSorting) return;
+
+                        [arr[i], arr[extremumIdx]] = [arr[extremumIdx], arr[i]];
+                        currentDataToSort = [...arr]; 
+                        drawBothPanes({ sortedBoundary: i });
+                        updateStatus(`交換完了。位置 ${i} 確定: <b>${getBarDisplayValue(arr[i], fixedSortKeyBase)}</b>`);
+                    } else {
+                        updateStatus(`位置 ${i} (<b>${getBarDisplayValue(arr[i], fixedSortKeyBase)}</b>) は既に正しい。`);
+                        currentDataToSort = [...arr]; 
+                        drawBothPanes({ sortedBoundary: i });
+                    }
+                    await delay(); if (isPaused) yield 'paused'; if (!isSorting) return;
+                }
+                currentDataToSort = [...arr];
+                drawBothPans({ sortedBoundary: currentDataToSort.length -1 });
+                updateStatus("ソート完了！");
+                return arr;
+            }
+
+            async function runSortStep() {
+                if (!isSorting || isPaused) return;
+                try {
+                    const result = await sortGenerator.next();
+                    if (result.value === 'paused') return;
+                    if (result.done) {
+                        isSorting = false;
+                        startPauseButton.textContent = "開始";
+                        startPauseButton.disabled = true;
+                        resetButton.disabled = false;
+                    } else if (isSorting && !isPaused) {
+                        runSortStep();
+                    }
+                } catch (error) {
+                    console.error("Sort step error:", error);
+                    updateStatus("エラーが発生しました。リセットしてください。");
+                    window.stopSortVisualizer();
+                }
+            }
+
+            function startSort() {
+                if (isSorting && !isPaused) return;
+                isSorting = true; isPaused = false;
+                startPauseButton.textContent = "一時停止";
+                resetButton.disabled = true;
+
+                if (!sortGenerator) {
+                    sortGenerator = selectionSortGenerator();
+                }
+                runSortStep();
+            }
+
+            function pauseSort() {
+                if (!isSorting || isPaused) return;
+                isPaused = true;
+                clearTimeout(currentTimeoutId);
+                startPauseButton.textContent = "再開";
+                resetButton.disabled = false;
+                updateStatus("一時停止中...");
+            }
+
+            function resumeSort() {
+                if (!isSorting || !isPaused) return;
+                isPaused = false;
+                startPauseButton.textContent = "一時停止";
+                resetButton.disabled = true;
+                updateStatus("再開します...");
+                runSortStep();
+            }
+
+            window.stopSortVisualizer = function() {
+                isSorting = false; isPaused = true;
+                clearTimeout(currentTimeoutId);
+                sortGenerator = null;
+                startPauseButton.textContent = "開始";
+                startPauseButton.disabled = false;
+                resetButton.disabled = false;
+            }
+
+            window.initSortVisualizer = function(sortKeyBase, sortOrder) {
+                window.stopSortVisualizer();
+                currentDataToSort = JSON.parse(JSON.stringify(initialSearchData))
+                                      .sort(() => 0.5 - Math.random());
+                currentSortKeyFromUI = `${sortKeyBase}_${sortOrder}`;
+                vizSortKeySelector.value = currentSortKeyFromUI;
+
+                drawBothPanes(); 
+                const sortLabel = propertyToSortKeyLabel(currentSortKeyFromUI);
+                updateStatus(`選択ソート: 「${sortLabel}」<br>「開始」ボタンでソートを開始します。`);
+                startPauseButton.disabled = false;
+                isSorting = false; isPaused = false;
+
+                rightPanePlaceholder.classList.add('hidden');
+                visualizerContainer.classList.add('active');
+            };
+
+            startPauseButton.addEventListener('click', () => {
+                if (!visualizerContainer.classList.contains('active')) {
+                     updateStatus("まず左のドロップダウンで並び替え方法を選択してください。");
+                     return;
+                }
+                if (!isSorting) startSort();
+                else if (isPaused) resumeSort();
+                else pauseSort();
+            });
+
+            resetButton.addEventListener('click', () => {
+                window.handleSortSelection();
+            });
+
+            speedSlider.addEventListener('input', (e) => {
+                animationSpeedFactor = parseFloat(e.target.value);
+                speedValueDisplay.textContent = `x${animationSpeedFactor.toFixed(1)}`;
+            });
+
+            window.handleSortSelection = function() {
+                const sortByValue = sortBySelectForLeftPane.value;
+                const [property, type, order] = sortByValue.split('_');
+
+                let sortedDataForInitialLeftDisplay = [...initialSearchData];
+                if (type === 'default') {
+                    sortedDataForInitialLeftDisplay.sort((a, b) => {
+                        let valA = a[property]; let valB = b[property];
+                        if (property === 'date') {
+                            valA = new Date(valA); valB = new Date(valB);
+                            return order === 'desc' ? valB - valA : valA - valB;
+                        }
+                        if (property === 'title') {
+                            return order === 'asc' ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
+                        }
+                        return 0;
+                    });
+                }
+                
+                if (!visualizerContainer.classList.contains('active') || !(type === 'default' && (property === 'date' || property === 'title'))) {
+                     renderResultsForLeftPane(sortedDataForInitialLeftDisplay);
+                }
+
+
+                if (type === 'default' && (property === 'date' || property === 'title')) {
+                    window.initSortVisualizer(property, order);
+                } else {
+                    rightPanePlaceholder.classList.remove('hidden');
+                    visualizerContainer.classList.remove('active');
+                    window.stopSortVisualizer();
+                    renderResultsForLeftPane(sortedDataForInitialLeftDisplay); 
+                }
+                updateHeaderHeights();
+            }
+
+        })();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            sortBySelectForLeftPane.addEventListener('change', () => {
+                window.handleSortSelection();
+            });
+            window.handleSortSelection(); 
+            window.addEventListener('resize', updateHeaderHeights);
+        });
+    </script>
+</body>
+</html>

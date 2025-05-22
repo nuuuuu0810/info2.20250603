@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>シェルソート 選択</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* --- スタイル 1: Flexboxレイアウト (元の挿入ソートからそのまま) --- */
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        #main {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+        .left-pane {
+            width: 55%;
+            padding: 20px;
+            box-sizing: border-box;
+            border-right: 1px solid #FFF;
+            background-color: #FFFFFF;
+            overflow-y: auto;
+        }
+
+        .left-pane h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .left-pane p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .right-pane {
+            width: 45%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            overflow-y: auto;
+            height: 100%;
+        }
+
+        .right-pane h4{
+            font-size: 1em;
+            color: #333;
+            margin-right: auto;
+            margin-top: 0px;
+            margin-bottom: 0px;
+        }
+
+        .sort-module-wrapper {
+            width: 100%;
+            max-width: 750px;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* height: 95vw; 元の挿入ソートでは固定高さだったが、コンテンツ量で可変にするため auto */
+            height: auto;
+            min-height: calc(100vh - 40px - 20px);
+            /* body padding と wrapper padding を考慮 */
+            padding-left: 30px;
+            /* 元の挿入ソートのスタイル */
+        }
+
+        /* --- 同期棒グラフ表示 (元の挿入ソートからそのまま) --- */
+        #sync_bar_graph_container {
+            display: flex;
+            width: 100%;
+            min-height: 200px;
+            padding: 10px 0;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+            /* justify-content: center; /* 元は指定なし、flex-startがデフォルト */
+        }
+
+        #bar_items_wrapper {
+            display: flex;
+            gap: 5px;
+            align-items: flex-end;
+            position: relative;
+        }
+
+        .bar_item {
+            width: 40px;
+            text-align: center;
+            border: 1px solid #FFF;
+            background-color: #FFFFFF;
+            font-weight: bold;
+            font-size: 1em;
+            color: #FFFFFF;
+            /* 元の挿入ソートのデフォルト文字色 */
+            box-sizing: border-box;
+            position: relative;
+            --value: 1;
+            height: calc(25px + (var(--value) * 15px));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background-color 0.3s ease, border-color 0.3s ease, height 0.3s ease;
+        }
+
+        /* --- シェルソート用メインコンテナ (元の insertion_main-app-container 相当) --- */
+        #shell_main-app-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* #shell_sort-container を中央揃えにするため */
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 0;
+            /* 棒グラフとのマージンは .right-pane の gap で調整 */
+            /* margin-top: 20px; /* 元の挿入ソートのスタイル */
+        }
+
+        /* ギャップ表示用のコンテナ (新規追加) */
+        #gap-display-container {
+            width: 100%;
+            text-align: center;
+            /* 中央揃え */
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #333;
+            padding: 5px 0 10px 0;
+            /* 上下に少しパディング */
+            box-sizing: border-box;
+            /* margin-bottom: 5px; /* #shell_sort-container との間のマージン */
+        }
+
+        #gap-display-container span {
+            background-color: #f0f2f5;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+
+
+        /* シェルソートステップ表示用コンテナ (元の insertion_sort-container 相当) */
+        #shell_sort-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            /* step-row を左揃えにするため */
+            box-sizing: border-box;
+            /* margin-right: auto; /* 元の挿入ソートのスタイル。 align-items: center の親と併用 */
+            width: 100%;
+            /* 親の幅に合わせる */
+        }
+
+        .step-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0;
+            justify-content: flex-start;
+            min-height: 45px;
+            opacity: 1;
+            /* 元の挿入ソートは最初から表示 */
+            visibility: visible;
+            height: auto;
+            transition: opacity 0.5s ease-in-out, visibility 0s linear 0s, height 0.5s ease-in-out, margin-bottom 0.5s ease-in-out;
+            position: relative;
+            box-sizing: border-box;
+            padding: 0;
+            width: 100%;
+            /* 親の幅いっぱいに */
+        }
+
+        /* 非表示制御はJSで行う。 .visible クラスはシェルのものを踏襲 */
+        .step-row:not(.visible) {
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+            visibility: hidden;
+            pointer-events: none;
+            margin-bottom: 0;
+            transition: opacity 0.3s ease-out, height 0.3s ease-out, margin-bottom 0.3s ease-out, visibility 0s linear 0.3s;
+        }
+
+        .step-row.visible {
+            /* このクラスをJSで付与して表示 */
+            opacity: 1;
+            height: auto;
+            margin-bottom: 4px;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+
+        .initial-array-row.visible {
+            /* 元の挿入ソートのスタイル */
+            margin-bottom: 8px;
+        }
+
+        .number-squares {
+            display: flex;
+            gap: 6px;
+            margin-right: 10px;
+            flex-wrap: nowrap;
+            /* overflow-x: auto; /* 元の挿入ソートにはなかった */
+            /* padding-bottom: 5px; /* 元の挿入ソートにはなかった */
+        }
+
+        .number-element {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            /* color: white; /* 元の挿入ソートのデフォルト。シェルでは黒ベース */
+            color: black;
+            /* シェルソートの色に合わせて黒 */
+            font-weight: bold;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            cursor: default;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            text-align: center;
+            text-align-last: center;
+        }
+
+        .number-element option {
+            background-color: white;
+            color: black;
+        }
+
+        /* --- 色定義 --- */
+        /* シェルソート用の色クラス (元の挿入ソートの色クラスは使わない) */
+        .number-element.state-color-red,
+        .bar_item.state-color-red {
+            background-color: #FFC0CB;
+            border-color: #FFB6C1;
+            color: black !important;
+        }
+
+        /* Pink */
+        .number-element.state-color-yellow,
+        .bar_item.state-color-yellow {
+            background-color: #FFEB3B;
+            border-color: #FBC02D;
+            color: black !important;
+        }
+
+        /* Yellow */
+        .number-element.state-color-base-lightblue,
+        .bar_item.state-color-base-lightblue {
+            background-color: #8CE3FE;
+            border-color: #7bc8e2;
+            color: black !important;
+        }
+
+        .number-element.state-color-light-orange,
+        .bar_item.state-color-light-orange {
+            background-color: #FFDAB9;
+            border-color: #FFC8A1;
+            color: black !important;
+        }
+
+        .number-element.state-color-light-green,
+        .bar_item.state-color-light-green {
+            background-color: #90EE90;
+            border-color: #7ACC7A;
+            color: black !important;
+        }
+
+        /* 初期表示と最終表示は元の挿入ソートのオレンジ色を踏襲 */
+        .number-element.state-initial,
+        .bar_item.state-initial {
+            background-color: #FFC107;
+            border-color: #FFA000;
+            color: black !important;
+            /* 元の挿入ソートの文字色 */
+        }
+
+        .number-element.state-final-sorted,
+        .bar_item.state-final-sorted {
+            background-color: #FFC107;
+            border-color: #FFA000;
+            color: black !important;
+            /* 元の挿入ソートの文字色 */
+        }
+
+        .number-element.state-unsorted,
+        .bar_item.state-unsorted {
+            /* 未ソート部分 (デフォルト) */
+            background-color: #cccccc;
+            border-color: #b3b3b3;
+            color: black !important;
+        }
+
+        .number-element.state-sorted,
+        .bar_item.state-sorted {
+            /* OK後の色 (シェルソートでは特定の色を使う) */
+            /* このクラスはシェルソートでは直接使わず、state-color-* で上書きされる想定 */
+            background-color: #8CE3FE;
+            /* 薄い青 (挿入ソートのOK後) */
+            border-color: #7bc8e2;
+            color: black !important;
+        }
+
+
+        .number-element:disabled {
+            opacity: 1;
+            cursor: default;
+        }
+
+        .number-element:disabled::-ms-expand {
+            display: none;
+        }
+
+        .execute-btn {
+            /* 元の挿入ソートからそのまま */
+            background-color: #212121;
+            color: white;
+            border: 1px solid #000;
+            width: 38px;
+            height: 38px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            transition: background-color 0.2s ease;
+            padding: 0;
+            flex-shrink: 0;
+            cursor: pointer;
+            margin-right: 12px;
+        }
+
+        .execute-btn svg {
+            fill: white;
+            width: 16px;
+            height: 16px;
+            display: block;
+        }
+
+        .execute-btn:disabled {
+            background-color: #666666;
+            border-color: #555555;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .execute-btn:disabled svg {
+            fill: #cccccc;
+        }
+
+        .status-text {
+            /* 元の挿入ソートからそのまま */
+            font-size: 1.0em;
+            font-weight: bold;
+            min-width: 60px;
+            text-align: left;
+            line-height: 40px;
+            flex-shrink: 0;
+        }
+
+        .status-ok {
+            color: #2ecc40;
+        }
+
+        .status-error {
+            color: #ff4136;
+        }
+
+        .status-complete {
+            color: #2ecc40;
+        }
+
+        .empty-array-message {
+            /* 元の挿入ソートからそのまま */
+            padding: 10px;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #555;
+            width: 100%;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 768px) {
+
+            /* sort-module-wrapper の padding-left を調整 */
+            .sort-module-wrapper {
+                padding-left: 20px;
+                /* 元の挿入ソートのpadding-leftより小さく */
+            }
+        }
+
+        @media (max-width: 480px) {
+
+            /* 元の挿入ソートからそのまま */
+            .number-squares {
+                gap: 4px;
+                margin-right: 8px;
+            }
+
+            .number-element {
+                width: 32px;
+                height: 32px;
+                font-size: 1em;
+            }
+
+            .execute-btn {
+                width: 32px;
+                height: 32px;
+                margin-right: 8px;
+            }
+
+            .execute-btn svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            .status-text {
+                font-size: 1em;
+                min-width: 50px;
+                line-height: 32px;
+            }
+
+            .bar_item {
+                width: 30px;
+                font-size: 0.8em;
+                height: calc(15px + (var(--value) * 10px));
+            }
+
+            #gap-display-container {
+                font-size: 1em;
+            }
+
+            .sort-module-wrapper {
+                padding-left: 10px;
+            }
+        }
+
+    </style>
+</head>
+
+<body>
+    <div id="main">
+        <div class="left-pane">
+            <img src="shell.png" alt="shell" width="98%">
+        </div>
+        <div class="right-pane">
+            <div class="sort-module-wrapper"> <!-- このwrapperは1つ -->
+                <h4>現在のギャップ: <span id="shell_current-gap-value">-</span></h4>
+                <div id="sync_bar_graph_container">
+                    <div id="bar_items_wrapper">
+                        <!-- JavaScriptで棒グラフ要素を動的に生成 -->
+                    </div>
+                </div>
+                <div id="shell_main-app-container">
+                    <div id="gap-display-container"> <!-- 新規追加 -->
+
+                    </div>
+                    <div id="shell_sort-container">
+                        <!-- JavaScript will populate this area -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Global Shared State ---
+        let sharedInitialArray = [];
+
+        // --- Script: Shell Sort (Manual, insertion_ prefixを shell_ に変更) ---
+        let shell_initialArray = [];
+        let shell_currentArray = [];
+        let shell_allPossibleOptionsForSelect = []; // select要素の選択肢用
+
+        const shell_sortContainer = document.getElementById('shell_sort-container');
+        const shell_currentGapValueDisplay = document.getElementById('shell_current-gap-value'); // ギャップ表示用
+
+        let shell_allRowsElements = [];
+        let shell_allNumberElementsInRows = [];
+        let shell_allExecuteButtons = [];
+        let shell_allStatusTexts = [];
+
+        let shell_state = { // シェルソートの状態管理
+            gaps: [],
+            currentGapIndex: 0, // 現在のギャップのインデックス
+            currentRowIndexInUI: 0, // 表示されているUI上の行インデックス (1ギャップ1行)
+        };
+
+        // シェルソートの色パターン (元の挿入ソートの色名とは異なる)
+        const SHELL_SUBGROUP_COLORS = [
+            "state-color-red", "state-color-light-orange", "state-color-yellow",
+            "state-color-light-green", "state-color-base-lightblue"
+        ];
+
+        // --- Bar Graph Sync Logic (元の挿入ソートから流用) ---
+        const barGraphItemsWrapper = document.getElementById('bar_items_wrapper');
+
+        function renderBarGraph(arr, elementStates = []) {
+            if (!barGraphItemsWrapper) return;
+
+            if (barGraphItemsWrapper.children.length !== arr.length) {
+                barGraphItemsWrapper.innerHTML = '';
+                arr.forEach((value, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'bar_item';
+                    item.id = `bar_item-${index}`; // bar_item-idx
+                    barGraphItemsWrapper.appendChild(item);
+                });
+            }
+
+            arr.forEach((value, index) => {
+                const item = document.getElementById(`bar_item-${index}`);
+                if (!item) return;
+                item.textContent = value;
+                item.style.setProperty('--value', value);
+
+                const classesToRemove = Array.from(item.classList).filter(cls => cls.startsWith('state-'));
+                if (classesToRemove.length > 0) item.classList.remove(...classesToRemove);
+
+                if (elementStates && elementStates[index]) {
+                    item.classList.add(elementStates[index]);
+                } else if (arr.length > 0) {
+                    item.classList.add('state-unsorted'); // デフォルトは未ソート色
+                }
+            });
+        }
+
+        // select要素生成 (元の insertion_createSelectElement を shell_ に変更)
+        function shell_createSelectElement(id, value, optionsArray, stateClasses, isDisabled) {
+            const select = document.createElement('select');
+            select.id = id;
+            select.className = `number-element ${stateClasses}`; // 複数のクラスを適用可能
+            select.disabled = isDisabled;
+            const stringValueToSelect = String(value); // 比較用に文字列化
+
+            // オプションは数値としてソート
+            const uniqueStringOptions = [...new Set(optionsArray.map(String))];
+            const sortedOptions = uniqueStringOptions.sort((a, b) => Number(a) - Number(b));
+
+            // 現在の値がオプションにない場合、追加してソート
+            if (value !== undefined && value !== null && value !== '' && !sortedOptions.includes(stringValueToSelect)) {
+                sortedOptions.push(stringValueToSelect);
+                sortedOptions.sort((a, b) => Number(a) - Number(b));
+            }
+
+            sortedOptions.forEach(optVal => {
+                const option = document.createElement('option');
+                option.value = String(optVal);
+                option.textContent = String(optVal);
+                select.appendChild(option);
+            });
+
+            select.value = stringValueToSelect;
+            // 値が完全に一致しない場合のフォールバック (textContentで確認)
+            if (select.value !== stringValueToSelect && select.options.length > 0) {
+                for (let i = 0; i < select.options.length; i++) {
+                    if (select.options[i].textContent === stringValueToSelect) {
+                        select.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            // オプションが空で値がある場合、その値のみをオプションとして追加
+            if (select.options.length === 0 && (value !== undefined && value !== null && value !== '')) {
+                const option = document.createElement('option');
+                option.value = stringValueToSelect;
+                option.textContent = stringValueToSelect;
+                select.appendChild(option);
+                select.value = stringValueToSelect;
+            }
+            return select;
+        }
+
+        // シェルソートのギャップシーケンスを生成 (N/2, N/4, ..., 1)
+        function shell_getGaps(N) {
+            if (N <= 1) return [];
+            const gaps = [];
+            let gap = Math.floor(N / 2);
+            while (gap > 0) {
+                gaps.push(gap);
+                gap = Math.floor(gap / 2);
+            }
+            return gaps.length > 0 ? gaps : (N > 1 ? [1] : []); // N>1なら最低でも[1]
+        }
+
+        // 行の生成 (元の insertion_generateRows を shell_ に変更)
+        function shell_generateRows() {
+            shell_sortContainer.innerHTML = ''; // 既存の行をクリア
+            shell_allRowsElements = [];
+            shell_allNumberElementsInRows = [];
+            shell_allExecuteButtons = [];
+            shell_allStatusTexts = [];
+            const numElements = shell_currentArray.length;
+
+            // select要素のオプションリストを作成 (1から配列の最大値または20までの数値)
+            shell_allPossibleOptionsForSelect = [];
+            if (numElements > 0) {
+                const maxValInArray = shell_currentArray.length > 0 ? Math.max(...shell_currentArray.map(Number)) : 0;
+                const maxOptionVal = Math.max(20, maxValInArray);
+                for (let k = 1; k <= maxOptionVal; k++) {
+                    shell_allPossibleOptionsForSelect.push(String(k));
+                }
+            }
+
+            // 初期配列表示行 (元の挿入ソートと同じ)
+            if (numElements > 0) {
+                const initialDisplayRowDiv = document.createElement('div');
+                initialDisplayRowDiv.className = 'step-row visible initial-array-row'; // 最初から表示
+                const initialSquaresDiv = document.createElement('div');
+                initialSquaresDiv.className = 'number-squares';
+                shell_initialArray.forEach((val, index) => {
+                    // 初期表示は state-initial クラスを使用
+                    const selectEl = shell_createSelectElement(`initial-el-${index}`, val, [val], 'state-initial', true);
+                    initialSquaresDiv.appendChild(selectEl);
+                });
+                initialDisplayRowDiv.appendChild(initialSquaresDiv);
+                shell_sortContainer.appendChild(initialDisplayRowDiv);
+            } else { // 配列が空の場合のメッセージ
+                const emptyMsgDiv = document.createElement('div');
+                emptyMsgDiv.className = 'empty-array-message visible'; // 最初から表示
+                emptyMsgDiv.textContent = "ソート対象のデータがありません。";
+                shell_sortContainer.appendChild(emptyMsgDiv);
+                renderBarGraph([], []); // 空の配列で棒グラフをクリア
+                shell_currentGapValueDisplay.textContent = "-";
+                return;
+            }
+            // 初期配列で棒グラフをレンダリング
+            renderBarGraph(shell_currentArray, shell_currentArray.map(() => 'state-initial'));
+
+            // 各ギャップに対応するステップ行を生成 (ギャップの数だけ行を作る)
+            const numGaps = shell_state.gaps.length;
+            for (let i = 0; i < numGaps; i++) {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'step-row'; // 最初は非表示 (.visible で表示制御)
+                rowDiv.id = `shell-step-row-${i}`;
+                const squaresDiv = document.createElement('div');
+                squaresDiv.className = 'number-squares';
+                const currentNumberElementsForRow = [];
+
+                for (let j = 0; j < numElements; j++) {
+                    // select要素は prepareStepUI で値を設定。ここではプレースホルダ。
+                    const selectEl = shell_createSelectElement(`shell-el-${i}-${j}`, '', shell_allPossibleOptionsForSelect, 'state-unsorted', true);
+                    squaresDiv.appendChild(selectEl);
+                    currentNumberElementsForRow.push(selectEl);
+                }
+                shell_allNumberElementsInRows.push(currentNumberElementsForRow);
+                rowDiv.appendChild(squaresDiv);
+
+                // 実行ボタン (元の挿入ソートと同じ)
+                const button = document.createElement('button');
+                button.className = 'execute-btn';
+                button.dataset.rowIndexUI = i; // UI上の行インデックスを保持
+                button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>';
+                button.disabled = true; // prepareStepUI で有効化
+                button.addEventListener('click', shell_handleExecute);
+                shell_allExecuteButtons[i] = button;
+                rowDiv.appendChild(button);
+
+                // ステータステキスト (元の挿入ソートと同じ)
+                const statusSpan = document.createElement('span');
+                statusSpan.className = 'status-text';
+                statusSpan.id = `shell-status-${i}`;
+                shell_allStatusTexts[i] = statusSpan;
+                rowDiv.appendChild(statusSpan);
+
+                shell_sortContainer.appendChild(rowDiv);
+                shell_allRowsElements.push(rowDiv);
+            }
+
+            // 最終完了メッセージ表示用の行 (挿入ソートの最終行に相当)
+            // ギャップ処理が終わった後にこの行のステータスを「完了」にする
+            if (numGaps > 0) { // ギャップがある場合のみ
+                const finalRowIndexUI = numGaps; // 最後のギャップ行の次
+                const finalStatusRow = document.createElement('div');
+                finalStatusRow.className = 'step-row'; // 最初は非表示
+                finalStatusRow.id = `shell-step-row-${finalRowIndexUI}`;
+
+                // 完了時は数値表示は不要だが、レイアウトを合わせるために空のsquaresDivを置くことも検討可
+                // 今回はステータステキストのみ
+                const finalStatusSpan = document.createElement('span');
+                finalStatusSpan.className = 'status-text';
+                finalStatusSpan.id = `shell-status-${finalRowIndexUI}`;
+                finalStatusRow.appendChild(finalStatusSpan);
+
+                shell_allStatusTexts[finalRowIndexUI] = finalStatusSpan;
+                shell_allRowsElements.push(finalStatusRow);
+                shell_allNumberElementsInRows.push([]); // この行には数値要素なし
+                shell_allExecuteButtons.push(null);     // この行にはボタンなし
+
+                shell_sortContainer.appendChild(finalStatusRow);
+            }
+        }
+
+        // UIステップ準備 (元の insertion_prepareStepUI を shell_ に変更)
+        // rowIndexUI は表示する行のインデックス (0から始まる)
+        function shell_prepareStepUI(rowIndexUI, arrayToDisplay) {
+            if (rowIndexUI >= shell_allRowsElements.length || shell_state.currentGapIndex >= shell_state.gaps.length) {
+                // console.warn("PrepareStepUI: Invalid indices", rowIndexUI, shell_state.currentGapIndex);
+                return;
+            }
+
+            const currentGap = shell_state.gaps[shell_state.currentGapIndex];
+            shell_currentGapValueDisplay.textContent = currentGap; // 現在のギャップを表示
+
+            const currentRowElement = shell_allRowsElements[rowIndexUI];
+            if (!currentRowElement) { /* console.error("Row element not found for UI index:", rowIndexUI); */ return; }
+            currentRowElement.classList.add('visible'); // 行を表示
+
+            const currentSelectsInRow = shell_allNumberElementsInRows[rowIndexUI];
+            if (!currentSelectsInRow || currentSelectsInRow.length === 0) {
+                // console.warn("Selects not found or empty for UI row index:", rowIndexUI);
+                // 最終完了行など、数値要素がない行の場合はここで終了して良い
+                if (shell_allExecuteButtons[rowIndexUI]) shell_allExecuteButtons[rowIndexUI].style.display = 'none';
+                return;
+            }
+
+            const barElementStates = []; // 棒グラフの色分け用
+
+            currentSelectsInRow.forEach((selectEl, colIndex) => {
+                let value = arrayToDisplay[colIndex];
+                // サブグループに応じて色を決定
+                let sublistId = colIndex % currentGap;
+                let cellStateClass = SHELL_SUBGROUP_COLORS[sublistId % SHELL_SUBGROUP_COLORS.length];
+                barElementStates[colIndex] = cellStateClass; // 棒グラフにも同じ色クラスを適用
+
+                // select要素を再生成して値を設定、色付け、有効化
+                const newSelectEl = shell_createSelectElement(
+                    selectEl.id, value, shell_allPossibleOptionsForSelect, cellStateClass, false // falseで有効化
+                );
+                selectEl.parentNode.replaceChild(newSelectEl, selectEl);
+                currentSelectsInRow[colIndex] = newSelectEl;
+            });
+            renderBarGraph(arrayToDisplay, barElementStates); // 棒グラフを更新
+
+            // ボタンとステータステキストを初期化
+            if (shell_allExecuteButtons[rowIndexUI]) {
+                shell_allExecuteButtons[rowIndexUI].disabled = false;
+            }
+            if (shell_allStatusTexts[rowIndexUI]) {
+                shell_allStatusTexts[rowIndexUI].textContent = '';
+                shell_allStatusTexts[rowIndexUI].className = 'status-text';
+            }
+        }
+
+        // 全ソート完了時の表示 (元の insertion_displayAllSorted を shell_ に変更)
+        // lastUsedRowIndexUI は最後に操作したUI行のインデックス
+        function shell_displayAllSorted(sortedArray, lastUsedRowIndexUI) {
+            shell_currentGapValueDisplay.textContent = (sortedArray.length <= 1) ? "ソート不要" : "ソート完了！";
+            renderBarGraph(sortedArray, sortedArray.map(() => 'state-final-sorted')); // 最終状態の色で棒グラフ表示
+
+            // 最後に使った行より後の行を非表示にする (もしあれば)
+            for (let i = lastUsedRowIndexUI + 1; i < shell_allRowsElements.length; i++) {
+                if (shell_allRowsElements[i]) {
+                    shell_allRowsElements[i].classList.remove('visible');
+                }
+            }
+
+            // 完了メッセージを表示する行のインデックス
+            // 通常は最後のギャップ処理行の次 (shell_generateRowsで追加した専用行)
+            let finalDisplayRowIndexUI = shell_state.gaps.length;
+            if (shell_currentArray.length <= 1 || shell_state.gaps.length === 0) {
+                // 配列が短いかギャップがない場合、最初の行(initial-array-rowの次)か、専用行があればそれを使う
+                finalDisplayRowIndexUI = 0; // initial-array-row は常に表示なので、その次の行 (なければ専用行)
+                if (shell_allRowsElements.length > 1) finalDisplayRowIndexUI = 0; // 0番目のステップ行
+                else finalDisplayRowIndexUI = -1; // 表示する行がない
+
+                // 最初の行のステータスを使う場合
+                if (shell_allStatusTexts[0] && (shell_currentArray.length <= 1 || shell_state.gaps.length === 0)) {
+                    // 何も表示しないか、初期配列行に直接メッセージを出すかだが、元の挿入ソートは完了行があった
+                    // ここではギャップ表示コンテナに最終メッセージを出す
+                }
+            }
+
+
+            // 完了メッセージを表示する対象の行を取得
+            const targetRowElement = shell_allRowsElements[finalDisplayRowIndexUI];
+
+            if (targetRowElement) {
+                targetRowElement.classList.add('visible'); // 完了メッセージ行を表示
+                // この行にボタンがあれば非表示 (通常はないはず)
+                if (shell_allExecuteButtons[finalDisplayRowIndexUI]) {
+                    shell_allExecuteButtons[finalDisplayRowIndexUI].style.display = 'none';
+                }
+
+                // この行に数値要素があれば、最終ソート済み配列で更新 (通常はステータスのみ)
+                const selectsInFinalRow = shell_allNumberElementsInRows[finalDisplayRowIndexUI];
+                if (selectsInFinalRow && selectsInFinalRow.length > 0) {
+                    selectsInFinalRow.forEach((select, colIndex) => {
+                        if (!select) return;
+                        const finalValue = sortedArray[colIndex];
+                        // state-final-sorted で表示
+                        const newSelectEl = shell_createSelectElement(
+                            select.id, finalValue, [finalValue], 'state-final-sorted', true // trueで無効化
+                        );
+                        if (select.parentNode) select.parentNode.replaceChild(newSelectEl, select);
+                    });
+                }
+
+                // ステータステキストを「完了」に設定
+                if (shell_allStatusTexts[finalDisplayRowIndexUI]) {
+                    shell_allStatusTexts[finalDisplayRowIndexUI].textContent = '完了';
+                    shell_allStatusTexts[finalDisplayRowIndexUI].className = 'status-text status-complete';
+                }
+            } else if (lastUsedRowIndexUI >= 0 && shell_allStatusTexts[lastUsedRowIndexUI]) {
+                // 最後の操作行のステータスを完了にするフォールバック
+                shell_allStatusTexts[lastUsedRowIndexUI].textContent = '完了';
+                shell_allStatusTexts[lastUsedRowIndexUI].className = 'status-text status-complete';
+            }
+        }
+
+        // 実行ボタンの処理 (元の insertion_handleExecute を shell_ に変更)
+        function shell_handleExecute(event) {
+            const button = event.currentTarget;
+            const uiRowIndexOfButton = parseInt(button.dataset.rowIndexUI);
+
+            // 現在処理すべきUI行とボタンの行が一致するか確認
+            if (uiRowIndexOfButton !== shell_state.currentRowIndexInUI ||
+                shell_state.currentGapIndex >= shell_state.gaps.length) { // ギャップが残っているか
+                // console.warn("Execute mismatch or no gaps left:", uiRowIndexOfButton, shell_state.currentRowIndexInUI, shell_state.currentGapIndex);
+                return;
+            }
+
+            const numElements = shell_currentArray.length;
+            const currentStatusText = shell_allStatusTexts[shell_state.currentRowIndexInUI];
+            const userSelectedRowState = []; // ユーザーが選択した行の状態
+            const selectsInCurrentRow = shell_allNumberElementsInRows[shell_state.currentRowIndexInUI];
+
+            selectsInCurrentRow.forEach(selectEl => {
+                userSelectedRowState.push(Number(selectEl.value)); // 数値として取得
+            });
+
+            // シェルソートの現在のギャップに対する期待されるソート結果を計算
+            let expectedArrayAfterGapSort = [...shell_currentArray]; // 現在の配列をコピー
+            const currentGap = shell_state.gaps[shell_state.currentGapIndex];
+
+            // ギャップソート (挿入ソートの変形)
+            for (let i = currentGap; i < numElements; i++) {
+                let tempKey = expectedArrayAfterGapSort[i];
+                let k = i;
+                // 比較して挿入位置を見つける
+                while (k >= currentGap && expectedArrayAfterGapSort[k - currentGap] > tempKey) {
+                    expectedArrayAfterGapSort[k] = expectedArrayAfterGapSort[k - currentGap];
+                    k -= currentGap;
+                }
+                expectedArrayAfterGapSort[k] = tempKey; // 挿入
+            }
+
+            // ユーザーの選択と期待結果を比較
+            let isUserSetupCorrect = true;
+            for (let i = 0; i < numElements; i++) {
+                if (userSelectedRowState[i] !== expectedArrayAfterGapSort[i]) {
+                    isUserSetupCorrect = false;
+                    break;
+                }
+            }
+
+            const barElementStatesAfterUserAction = []; // 棒グラフの色更新用
+
+            if (isUserSetupCorrect) {
+                currentStatusText.textContent = 'OK';
+                currentStatusText.className = 'status-text status-ok';
+                button.disabled = true; // ボタンを無効化
+                shell_currentArray = [...expectedArrayAfterGapSort]; // 配列を更新
+
+                // 正解したので、現在の行のselect要素を更新して無効化、色も維持
+                shell_allNumberElementsInRows[shell_state.currentRowIndexInUI].forEach((sel, idx) => {
+                    const finalValueInCell = shell_currentArray[idx];
+                    // 色は現在のサブグループの色を維持 (または state-sorted にする)
+                    let sublistId = idx % currentGap;
+                    let cellStateClass = SHELL_SUBGROUP_COLORS[sublistId % SHELL_SUBGROUP_COLORS.length];
+                    // 正解したので 'state-sorted' にしても良いが、シェルソートではサブグループの色を維持する方が分かりやすい場合も
+                    // cellStateClass = 'state-sorted'; // もしOKなら全部同じ色にする場合
+                    barElementStatesAfterUserAction[idx] = cellStateClass;
+
+                    const newSelectEl = shell_createSelectElement(
+                        sel.id, finalValueInCell, [finalValueInCell], cellStateClass, true // trueで無効化
+                    );
+                    sel.parentNode.replaceChild(newSelectEl, sel);
+                });
+                renderBarGraph(shell_currentArray, barElementStatesAfterUserAction); // 棒グラフ更新
+
+                // 次のギャップへ
+                shell_state.currentGapIndex++;
+                const previousUIRowIndex = shell_state.currentRowIndexInUI;
+                shell_state.currentRowIndexInUI++; // UI上の次の行へ
+
+                if (shell_state.currentGapIndex < shell_state.gaps.length) { //まだギャップが残っている
+                    // 次のUI行が存在するか確認
+                    if (shell_state.currentRowIndexInUI < shell_allRowsElements.length &&
+                        shell_allNumberElementsInRows[shell_state.currentRowIndexInUI] && //数値要素を持つ行か
+                        shell_allNumberElementsInRows[shell_state.currentRowIndexInUI].length > 0) {
+                        shell_prepareStepUI(shell_state.currentRowIndexInUI, shell_currentArray);
+                    } else { // UI行が足りない (通常は発生しないはず)
+                        // console.warn("Ran out of UI rows for gaps. Displaying sorted.");
+                        shell_displayAllSorted(shell_currentArray, previousUIRowIndex);
+                    }
+                } else { // 全てのギャップ処理が完了
+                    shell_displayAllSorted(shell_currentArray, previousUIRowIndex);
+                }
+            } else { // ユーザーの選択が不正解
+                currentStatusText.textContent = 'エラー';
+                currentStatusText.className = 'status-text status-error';
+                // エラーの場合、ユーザーが選択した状態を棒グラフに反映してフィードバック
+                selectsInCurrentRow.forEach((sel, idx) => {
+                    // select要素の現在のクラスから色情報を取得
+                    const classList = sel.className.split(' ');
+                    let stateClassForBar = 'state-unsorted'; // デフォルト
+                    for (const cls of classList) {
+                        if (cls.startsWith('state-color-') || cls === 'state-initial') { // state-initialも考慮
+                            stateClassForBar = cls;
+                            break;
+                        }
+                    }
+                    barElementStatesAfterUserAction[idx] = stateClassForBar;
+                });
+                renderBarGraph(userSelectedRowState, barElementStatesAfterUserAction);
+            }
+        }
+
+        // 初期化処理 (元の insertion_initializeSortProcess を shell_ に変更)
+        function shell_initializeSortProcess() {
+            // 元の挿入ソートと同じ初期配列を使用
+            sharedInitialArray = [8, 4, 9, 2, 7, 3, 10, 6, 1, 5];
+            // sharedInitialArray = [7,2,9,1,5]; // テスト用短い配列
+
+            shell_initialArray = [...sharedInitialArray].map(Number); // 数値に変換
+            shell_currentArray = [...shell_initialArray]; // 現在の配列も初期化
+
+            shell_state.gaps = shell_getGaps(shell_currentArray.length); // ギャップシーケンス生成
+            shell_state.currentGapIndex = 0; // 最初のギャップから
+            shell_state.currentRowIndexInUI = 0; // UI上の最初のステップ行から
+
+            shell_generateRows(); // HTMLの行要素を生成
+
+            // 配列が非常に短いか、ギャップがない場合の処理
+            if (shell_currentArray.length <= 1 || shell_state.gaps.length === 0) {
+                // 初期配列表示後、すぐに完了状態を表示
+                // renderBarGraphはshell_generateRows内でも呼ばれるので、ここでは最終状態を指示
+                shell_displayAllSorted(shell_currentArray, -1); // -1は初期表示行の前に操作なしの意
+                // ボタンがあれば全て非表示
+                shell_allExecuteButtons.forEach(btn => { if (btn) btn.style.display = 'none'; });
+                return;
+            }
+
+            // 最初のギャップのUIを準備
+            shell_prepareStepUI(shell_state.currentRowIndexInUI, shell_currentArray);
+        }
+
+        // --- Global Initialization (元の挿入ソートと同じ) ---
+        function initializeAll() {
+            const leftPane = document.querySelector('.left-pane');
+            if (!leftPane.querySelector('h3')) {
+            }
+            shell_initializeSortProcess(); // シェルソートの初期化を呼び出し
+        }
+
+        // 更新ボタンは使用しないのでイベントリスナーもなし
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeAll();
+        });
+    </script>
+
+</body>
+
+</html>

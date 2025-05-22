@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>情報科教育法Ⅱ 模擬授業 ソート</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            background-color: #f0f0f0;
+        }
+
+        .iframe-wrapper {
+            margin: 20px auto;
+        }
+
+        .iframe-container {
+            aspect-ratio: 1440 / 825;
+            overflow: hidden;
+            position: relative;
+            background-color: #eee;
+        }
+
+        .iframe-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1440px;
+            height: 825px;
+            border: none;
+            transform-origin: 0 0;
+        }
+
+        /* === TIMER STYLES START === */
+        .timer-container {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            width: 280px; /* プログレスサークルに合わせて調整 */
+            background-color: #000000;
+            border-radius: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .timer-drag-handle {
+            cursor: grab;
+            background-color: #000; /* やや明るい黒 */
+            height: 15px; /* バツ印がなくなったので調整 */
+            display: flex; /* 残しておく（将来的にタイトルなどを追加する場合のため） */
+            align-items: center;
+            justify-content: center; /* 中央寄せにする場合 */
+        }
+        .timer-drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .timer-content {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .progress-circle {
+            width: 220px; /* 円を大きく */
+            height: 220px;
+            border-radius: 50%;
+            background: conic-gradient(orange 0% 100%, #3a3a3c 100% 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            margin-bottom: 25px;
+        }
+
+        .progress-circle::before {
+            content: '';
+            position: absolute;
+            width: calc(100% - 16px); /* リングの太さ8px */
+            height: calc(100% - 16px);
+            background: #000000; /* タイマー背景と同じ黒 */
+            border-radius: 50%;
+            z-index: 0;
+        }
+
+        .timer-inner-display {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .timer-time-left { /* input要素用のスタイル */
+            font-size: 3em;
+            font-weight: 200;
+            color: white;
+            letter-spacing: 1.5px;
+            line-height: 1;
+            /* input固有スタイルのリセットと調整 */
+            background-color: transparent;
+            border: none;
+            text-align: center;
+            width: 160px; /* 表示に必要な幅を確保 (例: "99:59") */
+            padding: 0;
+            outline: none; /* フォーカス時のアウトラインを消す場合 */
+            caret-color: white; /* カーソルの色 */
+        }
+        .timer-time-left:read-only {
+            cursor: default; /* 読み取り専用時は通常のカーソル */
+        }
+
+
+        .timer-controls {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            margin-top: 0;
+        }
+
+        .timer-btn {
+            width: 70px;
+            height: 70px;
+            border: none;
+            border-radius: 50%;
+            font-size: 0.7em;
+            font-weight: normal;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            line-height: 1.2;
+        }
+
+        .timer-btn-gray {
+            background-color: #333333;
+            color: white;
+        }
+        .timer-btn-gray:hover {
+            background-color: #444444;
+        }
+        .timer-btn-orange {
+            background-color: #ff9500;
+            color: white;
+        }
+        .timer-btn-orange:hover {
+            background-color: #e08500;
+        }
+        /* === TIMER STYLES END === */
+
+        /* === TIMER TOGGLE CHECKBOX STYLES START === */
+        .timer-toggle-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 9999;
+            background-color: #ccc;
+            padding: 8px 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px #ddd;
+            display: flex;
+            align-items: center;
+        }
+        .timer-toggle-container label {
+            margin-left: 8px;
+            font-size: 0.8em;
+            color: #ddd; /* 明るいグレー */
+            cursor: pointer;
+        }
+        .timer-toggle-container input[type="checkbox"] {
+            cursor: pointer;
+            transform: scale(1.2);
+            background-color: #ddd;
+        }
+        /* === TIMER TOGGLE CHECKBOX STYLES END === */
+    </style>
+</head>
+<body>
+
+    <div class="iframe-wrapper">
+        <div class="iframe-container">
+          <iframe src="main.html"></iframe>
+        </div>
+    </div>
+
+    <!-- === TIMER HTML START === -->
+    <div id="draggableTimer" class="timer-container">
+        <div class="timer-drag-handle">
+            <!-- ×ボタンは削除 -->
+        </div>
+        <div class="timer-content">
+            <div id="timerProgressCircle" class="progress-circle">
+                <div class="timer-inner-display">
+                    <input type="text" class="timer-time-left" id="timerTimeLeft" value="03:00">
+                </div>
+            </div>
+            <div class="timer-controls">
+                <button id="timerCancelBtn" class="timer-btn timer-btn-gray">リセット</button>
+                <button id="timerStartPauseBtn" class="timer-btn timer-btn-orange">開始</button>
+            </div>
+        </div>
+    </div>
+    <!-- === TIMER HTML END === -->
+
+    <!-- === TIMER TOGGLE CHECKBOX HTML START === -->
+    <div class="timer-toggle-container">
+        <input type="checkbox" id="timerToggleCheckbox" checked>
+        <label for="timerToggleCheckbox">タイマー表示</label>
+    </div>
+    <!-- === TIMER TOGGLE CHECKBOX HTML END === -->
+
+
+    <script>
+        // Iframe scaling script (existing)
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.querySelector('.iframe-container');
+            const iframe = container.querySelector('iframe');
+            const contentOriginalWidth = 1440;
+
+            function adjustIframeScale() {
+                if (!container || !iframe) { return; }
+                const containerWidth = container.offsetWidth;
+                const scaleFactor = containerWidth / contentOriginalWidth;
+                iframe.style.transform = `scale(${scaleFactor})`;
+            }
+
+            if (iframe) { iframe.addEventListener('load', adjustIframeScale); }
+            adjustIframeScale();
+            window.addEventListener('resize', adjustIframeScale);
+
+            if (typeof ResizeObserver !== 'undefined') {
+                const resizeObserver = new ResizeObserver(adjustIframeScale);
+                resizeObserver.observe(container);
+            }
+        });
+
+        // === TIMER JAVASCRIPT START ===
+        document.addEventListener('DOMContentLoaded', function() {
+            const draggableTimerEl = document.getElementById('draggableTimer');
+            const timerDragHandleEl = draggableTimerEl.querySelector('.timer-drag-handle');
+            
+            const timerProgressCircleEl = document.getElementById('timerProgressCircle');
+            const timerTimeLeftEl = document.getElementById('timerTimeLeft'); // <input> element
+            
+            const timerCancelBtnEl = document.getElementById('timerCancelBtn');
+            const timerStartPauseBtnEl = document.getElementById('timerStartPauseBtn');
+
+            const timerToggleCheckboxEl = document.getElementById('timerToggleCheckbox');
+
+            const defaultTimerDuration = 3 * 60; // 初期タイマー時間（秒）
+            let totalInitialSeconds = defaultTimerDuration; // ユーザーが設定するタイマーの総時間
+
+            let currentTotalSecondsSet = totalInitialSeconds; // 現在のタイマーサイクルの総時間（プログレスバー用）
+            let secondsLeft = totalInitialSeconds;
+            let timerIntervalId = null;
+            let isTimerRunning = false;
+            let isPaused = false;
+
+            // Drag functionality
+            let offsetX, offsetY, isDragging = false;
+
+            timerDragHandleEl.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                const rect = draggableTimerEl.getBoundingClientRect();
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+                draggableTimerEl.style.cursor = 'grabbing';
+                timerDragHandleEl.style.cursor = 'grabbing';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                e.preventDefault();
+                draggableTimerEl.style.left = (e.clientX - offsetX) + 'px';
+                draggableTimerEl.style.top = (e.clientY - offsetY) + 'px';
+            });
+
+            function stopDragging() {
+                if (isDragging) {
+                    isDragging = false;
+                    draggableTimerEl.style.cursor = 'default';
+                    timerDragHandleEl.style.cursor = 'grab';
+                }
+            }
+            document.addEventListener('mouseup', stopDragging);
+            // document.addEventListener('mouseleave', stopDragging); // Window外でのmouseupを拾うためbodyのmouseleaveは不要な場合も
+
+            // Timer visibility toggle checkbox
+            timerToggleCheckboxEl.addEventListener('change', () => {
+                draggableTimerEl.style.display = timerToggleCheckboxEl.checked ? 'flex' : 'none';
+            });
+            if (!timerToggleCheckboxEl.checked) {
+                draggableTimerEl.style.display = 'none';
+            }
+
+            // Time input handling
+            function parseTimeInput(timeString) {
+                const match = timeString.match(/^(\d{1,2}):([0-5]\d)$/); // MM:[00-59]
+                if (match) {
+                    const minutes = parseInt(match[1], 10);
+                    const seconds = parseInt(match[2], 10);
+                    if (minutes >= 0 && minutes <= 99) { // Max 99 minutes
+                        const totalSec = minutes * 60 + seconds;
+                        // 実質的な上限 (99分59秒)
+                        if (totalSec > (99 * 60 + 59)) return null; 
+                        return totalSec;
+                    }
+                }
+                return null; // Parse failed
+            }
+
+            function handleTimeInputChange() {
+                if (isTimerRunning || isPaused) {
+                    // タイマー作動中は編集を反映せず、元の時間に戻す
+                    timerTimeLeftEl.value = formatTime(secondsLeft);
+                    return;
+                }
+                const inputValue = timerTimeLeftEl.value;
+                const parsedSeconds = parseTimeInput(inputValue);
+
+                if (parsedSeconds !== null) {
+                    totalInitialSeconds = parsedSeconds;
+                    secondsLeft = parsedSeconds;
+                    currentTotalSecondsSet = parsedSeconds; // 次の開始時の基準時間も更新
+                    updateDisplay(); // 新しい時間で表示を更新
+                } else {
+                    alert("無効な時間形式です。MM:SS形式（例: 05:30、最大99:59）で入力してください。");
+                    // パース失敗時は、最後に有効だったtotalInitialSecondsに基づく表示に戻す
+                    timerTimeLeftEl.value = formatTime(totalInitialSeconds);
+                }
+            }
+
+            timerTimeLeftEl.addEventListener('blur', handleTimeInputChange);
+            timerTimeLeftEl.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    handleTimeInputChange();
+                    timerTimeLeftEl.blur(); // フォーカスを外してblurイベントを発火させるか、直接処理
+                }
+            });
+
+
+            // Timer Controls
+            timerStartPauseBtnEl.addEventListener('click', () => {
+                if (!isTimerRunning && !isPaused) { 
+                    startTimer();
+                } else if (isTimerRunning && !isPaused) { 
+                    pauseTimer();
+                } else { // isPaused is true
+                    resumeTimer();
+                }
+            });
+
+            timerCancelBtnEl.addEventListener('click', () => {
+                cancelTimer();
+            });
+
+            function formatTime(totalSecondsValue) {
+                const minutes = Math.floor(totalSecondsValue / 60);
+                const seconds = totalSecondsValue % 60;
+                return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }
+
+            function updateDisplay() {
+                timerTimeLeftEl.value = formatTime(secondsLeft); // .value に変更
+                
+                let progressPercent = (secondsLeft / currentTotalSecondsSet) * 100;
+                if (currentTotalSecondsSet === 0 || secondsLeft < 0) { // currentTotalSecondsSetが0の場合も考慮
+                     progressPercent = 0;
+                } else if (secondsLeft > currentTotalSecondsSet) {
+                     progressPercent = 100;
+                }
+                progressPercent = Math.max(0, Math.min(100, progressPercent));
+                
+                timerProgressCircleEl.style.background = `conic-gradient(orange 0% ${progressPercent}%, #3a3a3c ${progressPercent}% 100%)`;
+            }
+
+            function startTimer() {
+                // 開始時は、ユーザーが設定した totalInitialSeconds から開始する
+                secondsLeft = totalInitialSeconds;
+                currentTotalSecondsSet = totalInitialSeconds;
+
+                isTimerRunning = true;
+                isPaused = false;
+                timerStartPauseBtnEl.textContent = '停止';
+                timerTimeLeftEl.readOnly = true; // 入力不可に
+                
+                updateDisplay(); 
+
+                if (currentTotalSecondsSet === 0 && secondsLeft === 0) { // 設定時間が0秒なら即座に「終了」扱い（ただしアラートはなし）
+                    isTimerRunning = false;
+                    timerStartPauseBtnEl.textContent = '開始';
+                    timerTimeLeftEl.readOnly = false;
+                    // secondsLeft is already 0, display is 00:00. No alert.
+                    // プログレスバーを0%に確定
+                    timerProgressCircleEl.style.background = `conic-gradient(orange 0% 0%, #3a3a3c 0% 100%)`;
+                    return;
+                }
+
+
+                timerIntervalId = setInterval(() => {
+                    secondsLeft--;
+                    updateDisplay();
+
+                    if (secondsLeft < 0) { 
+                        clearInterval(timerIntervalId);
+                        timerIntervalId = null;
+                        isTimerRunning = false;
+                        alert('タイマー終了！'); 
+                        resetTimerStateToInitial();
+                    }
+                }, 1000);
+            }
+
+            function pauseTimer() {
+                if (!timerIntervalId) return;
+                clearInterval(timerIntervalId);
+                timerIntervalId = null;
+                isTimerRunning = false;
+                isPaused = true;
+                timerStartPauseBtnEl.textContent = '再開';
+                timerTimeLeftEl.readOnly = true; // 一時停止中も編集不可が自然
+            }
+
+            function resumeTimer() {
+                // isPaused is true, isTimerRunning is false
+                isTimerRunning = true;
+                isPaused = false;
+                timerStartPauseBtnEl.textContent = '停止';
+                timerTimeLeftEl.readOnly = true; // 再開時も入力不可
+
+                // currentTotalSecondsSet はポーズ前のものが維持される
+                // secondsLeft もポーズ前の残り時間から
+
+                updateDisplay(); // ポーズからの再開時に表示を即時更新（特に不要なら削除可）
+
+                timerIntervalId = setInterval(() => {
+                    secondsLeft--;
+                    updateDisplay();
+                    if (secondsLeft < 0) {
+                        clearInterval(timerIntervalId);
+                        timerIntervalId = null;
+                        isTimerRunning = false;
+                        alert('タイマー終了！');
+                        resetTimerStateToInitial();
+                    }
+                }, 1000);
+            }
+
+            function cancelTimer() { 
+                if (timerIntervalId) {
+                    clearInterval(timerIntervalId);
+                    timerIntervalId = null;
+                }
+                // リセット時は、最後にユーザーが設定した時間 (totalInitialSeconds) に戻る
+                resetTimerStateToInitial();
+            }
+            
+            function resetTimerStateToInitial() {
+                isTimerRunning = false;
+                isPaused = false;
+                secondsLeft = totalInitialSeconds; // 最後に設定された時間に戻す
+                currentTotalSecondsSet = totalInitialSeconds; 
+                timerStartPauseBtnEl.textContent = '開始';
+                timerTimeLeftEl.readOnly = false; // 入力可能に戻す
+                updateDisplay();
+            }
+
+            // 初期状態を設定
+            resetTimerStateToInitial(); 
+        });
+        // === TIMER JAVASCRIPT END ===
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ランダムなトランプ（ランク重複なし）をドラッグ＆リセット</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+      background-color: #FFFFFF;
+    }
+
+    .draggableShape {
+      position: absolute;
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+      box-sizing: border-box;
+      background-color: #FFFFFF;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #000000;
+      font-weight: bold;
+      box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-content-wrapper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .card-corner {
+      position: absolute;
+      line-height: 1.1;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .card-corner .rank {
+      display: block;
+      font-family: "Yu Gothic", "游ゴシック体", "YuGothic", "游ゴシック", "ヒラギノ角ゴ ProN W3", "Hiragino Kaku Gothic ProN", "メイリオ", Meiryo, sans-serif;
+    }
+
+    .card-corner .suit {
+      display: block;
+    }
+
+    .card-corner.top-left {
+      top: 0.5em;
+      left: 0.5em;
+    }
+
+    .card-corner.bottom-right {
+      bottom: 0.5em;
+      right: 0.5em;
+      transform: rotate(180deg);
+    }
+
+    .card-main-suit {
+      font-weight: normal;
+    }
+
+    #resetButton {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 40px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      background-color: #F0F0F0;
+      color: #555;
+      border: 2px solid #AAAAAA;
+      border-radius: 5px;
+      z-index: 2000;
+      transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+    }
+
+    #resetButton:hover {
+      background-color: #DDDDDD;
+      color: #222;
+      border-color: #888888;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="draggableShape"></div>
+  <div class="draggableShape"></div>
+  <div class="draggableShape"></div>
+  <div class="draggableShape"></div>
+  <div class="draggableShape"></div>
+
+  <button id="resetButton">リセット</button>
+
+  <script>
+    const shapes = document.querySelectorAll('.draggableShape');
+    const resetButton = document.getElementById('resetButton');
+    let currentDraggingShape = null;
+    let offsetX, offsetY;
+
+    const shapeHeight = 200;
+    const shapeWidthRatio = 0.1;
+    const gap = 80;
+
+    const SUITS = ['♠', '♥', '♦', '♣'];
+    const RANK_SYMBOLS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+    let currentCardsInfo = [];
+
+    // 配列をシャッフルする関数 (Fisher-Yates shuffle)
+    function shuffleArray(array) {
+      const shuffledArray = [...array]; // 元の配列を壊さないようにコピー
+      for (let i = shuffledArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledArray[i], shuffledArray[j]] = [shuffledArray[j], shuffledArray[i]];
+      }
+      return shuffledArray;
+    }
+
+    // 新しいランダムなカード5枚を生成する関数 (ランク重複なし)
+    function generateRandomCardsNoRankDuplicates(count) {
+      const selectedCards = [];
+      const shuffledRanks = shuffleArray(RANK_SYMBOLS); // ランクをシャッフル
+
+      for (let i = 0; i < count; i++) {
+        if (i >= shuffledRanks.length) break; // ランクの種類より多くのカードは作れない
+
+        const rank = shuffledRanks[i]; // 重複しないランクを選択
+        const suit = SUITS[Math.floor(Math.random() * SUITS.length)]; // スートはランダムに選択
+
+        selectedCards.push({ rank, suit });
+      }
+      // 選ばれたカードをさらにシャッフルして表示順もランダムにする（任意）
+      return shuffleArray(selectedCards);
+    }
+
+    // カード要素に情報を描画する関数
+    function renderCard(shapeElement, cardInfo, cardWidth) {
+      const { rank, suit } = cardInfo;
+      const suitColor = (suit === '♥' || suit === '♦') ? 'red' : 'black';
+      const cornerFontSize = cardWidth * 0.15;
+      const mainSuitFontSize = cardWidth * 0.5;
+
+      shapeElement.innerHTML = `
+      <div class="card-content-wrapper" style="font-size: ${cornerFontSize}px;">
+          <div class="card-corner top-left">
+              <span class="rank">${rank}</span>
+              <span class="suit" style="color: ${suitColor};">${suit}</span>
+          </div>
+          <div class="card-main-suit" style="color: ${suitColor}; font-size: ${mainSuitFontSize}px;">
+              ${suit}
+          </div>
+          <div class="card-corner bottom-right">
+              <span class="rank">${rank}</span>
+              <span class="suit" style="color: ${suitColor};">${suit}</span>
+          </div>
+      </div>
+    `;
+    }
+
+    function positionAndSizeShapes(generateNewCards = true) {
+      const numShapes = shapes.length;
+      if (numShapes === 0) return;
+
+      const currentShapeWidth = window.innerWidth * shapeWidthRatio;
+      const currentShapeHeight = shapeHeight;
+
+      if (generateNewCards) {
+        currentCardsInfo = generateRandomCardsNoRankDuplicates(numShapes);
+      }
+
+      const totalShapesWidth = numShapes * currentShapeWidth;
+      const totalGapWidth = Math.max(0, numShapes - 1) * gap;
+      const totalArrangementWidth = totalShapesWidth + totalGapWidth;
+
+      const startX = (window.innerWidth - totalArrangementWidth) / 2;
+      const yPos = (window.innerHeight - currentShapeHeight) / 2;
+
+      shapes.forEach((shape, index) => {
+        shape.style.width = currentShapeWidth + 'px';
+        shape.style.height = currentShapeHeight + 'px';
+
+        if (shape !== currentDraggingShape || generateNewCards) {
+          if (currentCardsInfo[index]) {
+            renderCard(shape, currentCardsInfo[index], currentShapeWidth);
+          }
+        } else if (shape === currentDraggingShape && currentCardsInfo[index]) {
+          const contentWrapper = shape.querySelector('.card-content-wrapper');
+          if (contentWrapper) {
+            const cornerFontSize = currentShapeWidth * 0.15;
+            const mainSuitFontSize = currentShapeWidth * 0.5;
+            contentWrapper.style.fontSize = cornerFontSize + 'px';
+            const mainSuitEl = contentWrapper.querySelector('.card-main-suit');
+            if (mainSuitEl) mainSuitEl.style.fontSize = mainSuitFontSize + 'px';
+          }
+        }
+
+        if (shape !== currentDraggingShape) {
+          const currentX = startX + index * (currentShapeWidth + gap);
+          shape.style.left = currentX + 'px';
+          shape.style.top = yPos + 'px';
+          shape.style.zIndex = '';
+        }
+      });
+    }
+
+    // --- ドラッグイベントのグローバルハンドラ (変更なし) ---
+    const handleMouseMove = (e) => {
+      if (!currentDraggingShape) return;
+      const currentShapeWidth = currentDraggingShape.offsetWidth;
+      const currentShapeHeight = currentDraggingShape.offsetHeight;
+      let newX = e.clientX - offsetX;
+      let newY = e.clientY - offsetY;
+      const minX = 0;
+      const minY = 0;
+      const maxX = window.innerWidth - currentShapeWidth;
+      const maxY = window.innerHeight - currentShapeHeight;
+      newX = Math.max(minX, Math.min(newX, maxX));
+      newY = Math.max(minY, Math.min(newY, maxY));
+      currentDraggingShape.style.left = newX + 'px';
+      currentDraggingShape.style.top = newY + 'px';
+    };
+
+    const handleMouseUp = () => {
+      if (!currentDraggingShape) return;
+      currentDraggingShape.style.cursor = 'grab';
+      currentDraggingShape = null;
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    const handleTouchMove = (e) => {
+      if (!currentDraggingShape) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      const currentShapeWidth = currentDraggingShape.offsetWidth;
+      const currentShapeHeight = currentDraggingShape.offsetHeight;
+      let newX = touch.clientX - offsetX;
+      let newY = touch.clientY - offsetY;
+      const minX = 0;
+      const minY = 0;
+      const maxX = window.innerWidth - currentShapeWidth;
+      const maxY = window.innerHeight - currentShapeHeight;
+      newX = Math.max(minX, Math.min(newX, maxX));
+      newY = Math.max(minY, Math.min(newY, maxY));
+      currentDraggingShape.style.left = newX + 'px';
+      currentDraggingShape.style.top = newY + 'px';
+    };
+
+    const handleTouchEnd = () => {
+      if (!currentDraggingShape) return;
+      currentDraggingShape = null;
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('touchcancel', handleTouchEnd);
+    };
+
+    // --- 各カードに対する初期設定とイベントリスナー (変更なし) ---
+    shapes.forEach((shape, index) => {
+      shape.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        currentDraggingShape = shape;
+        offsetX = e.clientX - currentDraggingShape.getBoundingClientRect().left;
+        offsetY = e.clientY - currentDraggingShape.getBoundingClientRect().top;
+        currentDraggingShape.style.cursor = 'grabbing';
+        currentDraggingShape.style.zIndex = 1000;
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+      });
+
+      shape.addEventListener('touchstart', (e) => {
+        currentDraggingShape = shape;
+        const touch = e.touches[0];
+        offsetX = touch.clientX - currentDraggingShape.getBoundingClientRect().left;
+        offsetY = touch.clientY - currentDraggingShape.getBoundingClientRect().top;
+        currentDraggingShape.style.zIndex = 1000;
+        document.addEventListener('touchmove', handleTouchMove, { passive: false });
+        document.addEventListener('touchend', handleTouchEnd);
+        document.addEventListener('touchcancel', handleTouchEnd);
+      }, { passive: true });
+    });
+
+    // --- リセットボタンの処理 ---
+    resetButton.addEventListener('click', () => {
+      if (currentDraggingShape) {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+        document.removeEventListener('touchcancel', handleTouchEnd);
+        currentDraggingShape.style.cursor = 'grab';
+        currentDraggingShape.style.zIndex = '';
+        currentDraggingShape = null;
+      }
+      positionAndSizeShapes(true);
+    });
+
+    // --- 初期化処理 ---
+    positionAndSizeShapes(true);
+
+    window.addEventListener('resize', () => {
+      positionAndSizeShapes(!currentDraggingShape);
+    });
+  </script>
+
+</body>
+
+</html>

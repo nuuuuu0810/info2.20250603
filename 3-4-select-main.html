@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>選択ソート ランダム</title>
+    <style>
+
+        html,
+        body {
+            height: 100%;
+            /* 高さを100%にする */
+            margin: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            /* 基本フォントを適用 */
+        }
+
+        body {
+            display: flex;
+            /* body直下に#mainがくるようにする */
+            min-height: 100vh;
+            /* 画面全体の高さを確保 */
+        }
+
+        #main {
+            display: flex;
+            width: 100%;
+            /* 全幅を使用 */
+            height: 100%;
+            /* 高さいっぱいに広がるように */
+        }
+
+        .left-pane {
+            width: 55%;
+            /* 左側の幅 */
+            padding: 20px;
+            box-sizing: border-box;
+            /* 区切り線 */
+            background-color: #FFFFFF;
+            /* 左ペインの背景色 (例) */
+            overflow-y: auto;
+            /* コンテンツが多い場合にスクロール */
+        }
+
+
+        .right-pane {
+            width: 45%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            overflow-y: auto;
+            /* コンテンツが多い場合にスクロール */
+            height: 100%;
+            /* #mainのheightを継承 */
+        }
+
+        #main-app-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* 中の要素を中央揃え */
+            background-color: #ffffff;
+            padding: 25px;
+            /* メイン枠の内側の余白 */
+            border-radius: 8px;
+            width: auto;
+            width: 650px;
+            box-sizing: border-box;
+            height: 95vh;
+            max-width: 100%;
+        }
+
+        #controls-container {
+            display: flex;
+            flex-direction: row;
+            /* Horizontal layout for desktop */
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 25px;
+            /* sort-containerとの間隔 */
+            /* background-color: #ffffff; */
+            /* 削除 */
+            padding: 0;
+            /* パディングはsettings-group等で内側で調整 */
+            /* border-radius: 8px; */
+            /* 削除 */
+            /* box-shadow: 0 5px 15px rgba(0,0,0,0.08); */
+            /* 削除 */
+            width: 100%;
+            /* main-app-containerの幅に合わせる */
+            box-sizing: border-box;
+        }
+
+        .settings-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            /* Gap between control rows */
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-row label:first-child {
+            min-width: 55px;
+            text-align: right;
+            margin-right: 5px;
+            font-size: 0.95em;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .radio-group label {
+            margin-right: 0;
+            font-size: 0.95em;
+            display: flex;
+            align-items: center;
+        }
+
+        .radio-group input[type="radio"] {
+            margin-right: 4px;
+        }
+
+        #reset-button {
+            background-color: #2ecc40;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 0.9em;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            white-space: nowrap;
+            height: fit-content;
+        }
+
+        #reset-button:hover {
+            background-color: #2ecc40;
+        }
+
+        #array-size-slider {
+            width: 100px;
+        }
+
+        #array-size-value {
+            min-width: 20px;
+            text-align: left;
+            font-size: 0.95em;
+        }
+
+        #sort-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* background-color: #ffffff; */
+            /* 削除 */
+            padding: 0;
+            /* パディングはstep-row等で内側で調整 */
+            /* border-radius: 8px; */
+            /* 削除 */
+            /* box-shadow: 0 5px 15px rgba(0,0,0,0.08); */
+            /* 削除 */
+            width: 100%;
+            /* main-app-containerの幅に合わせる */
+            box-sizing: border-box;
+        }
+
+        .step-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0;
+            justify-content: flex-start;
+            min-height: 45px;
+            opacity: 1;
+            visibility: visible;
+            height: auto;
+            transition: opacity 0.5s ease-in-out, visibility 0s linear 0s, height 0.5s ease-in-out, margin-bottom 0.5s ease-in-out;
+            position: relative;
+            box-sizing: border-box;
+            padding: 0;
+            /* step-row自体のパディングはなし */
+            width: 100%;
+            /* sort-containerの幅に合わせる */
+        }
+
+        .step-row:not(.visible) {
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+            visibility: hidden;
+            pointer-events: none;
+            margin-bottom: 0;
+            transition: opacity 0.3s ease-out, height 0.3s ease-out, margin-bottom 0.3s ease-out, visibility 0s linear 0.3s;
+        }
+
+        .step-row.visible {
+            opacity: 1;
+            height: auto;
+            margin-bottom: 4px;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .initial-array-row.visible {
+            margin-bottom: 8px;
+            /* 初期配列表示の下のマージン */
+        }
+
+        .number-squares {
+            display: flex;
+            gap: 6px;
+            margin-right: 10px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            /* スクロールバー用のスペース */
+        }
+
+        .number-element {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            cursor: default;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            text-align: center;
+        }
+
+        .number-element option {
+            background-color: white;
+            color: black;
+        }
+
+        .number-element.state-interactive-swap-target {
+            background-color: #ff4136;
+            border-color: #dc2a23;
+            cursor: pointer;
+        }
+
+        .number-element.state-interactive-swap-source {
+            background-color: #8CE3FE;
+            /* Light Blue (like state-fixed-pivot, showing sorted status) */
+            border-color: #7bc8e2;
+            cursor: pointer;
+        }
+
+        .number-element.state-unsorted {
+            background-color: #8CE3FE;
+            /* Light Blue (like state-fixed-pivot, showing sorted status) */
+            border-color: #7bc8e2;
+            cursor: pointer;
+        }
+
+        .number-element.state-sorted {
+            background-color: #a9a9a9;
+            border-color: #8c8c8c;
+        }
+
+        .number-element.state-final-orange {
+            background-color: #FFC107;
+            border-color: #FFA000;
+            color: black;
+            font-weight: bold;
+        }
+
+        .number-element:disabled {
+            opacity: 1;
+            cursor: default;
+        }
+
+        .execute-btn {
+            background-color: #212121;
+            color: white;
+            border: 1px solid #000;
+            width: 38px;
+            height: 38px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            transition: background-color 0.2s ease;
+            padding: 0;
+            flex-shrink: 0;
+            cursor: pointer;
+            margin-right: 12px;
+        }
+
+        .execute-btn svg {
+            fill: white;
+            width: 16px;
+            height: 16px;
+            display: block;
+        }
+
+        .execute-btn:disabled {
+            background-color: #666666;
+            border-color: #555555;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .execute-btn:disabled svg {
+            fill: #cccccc;
+        }
+
+        .status-text {
+            font-size: 1.0em;
+            font-weight: bold;
+            min-width: 60px;
+            text-align: left;
+            line-height: 40px;
+            flex-shrink: 0;
+        }
+
+        .status-ok {
+            color: #2ecc40;
+        }
+
+        .status-error {
+            color: #ff4136;
+        }
+
+        .status-complete {
+            color: #2ecc40;
+        }
+
+        .initial-array-row .number-element {
+            background-color: #FFC107;
+            border-color: #FFA000;
+            color: black;
+            font-weight: bold;
+        }
+
+        .empty-array-message {
+            padding: 10px;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #555;
+            width: 100%;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 580px) {
+            #main-app-container {
+                padding: 15px;
+                /* スマホではメイン枠のパディングを少し減らす */
+                max-width: 95%;
+            }
+
+            #controls-container {
+                flex-direction: column;
+                align-items: stretch;
+                /* ボタンなどを横一杯に */
+            }
+
+            .settings-group {
+                align-items: center;
+                width: 100%;
+                /* settings-groupも横一杯に */
+            }
+
+            .control-row {
+                justify-content: center;
+                width: 100%;
+                /* control-rowも横一杯に */
+            }
+
+            .control-row label:first-child {
+                text-align: left;
+                min-width: auto;
+                margin-right: 10px;
+                /* ラジオボタンとの間隔 */
+            }
+
+            .radio-group {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            #reset-button {
+                width: 100%;
+                margin-top: 15px;
+                padding: 10px 15px;
+                font-size: 1em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .number-squares {
+                gap: 4px;
+                margin-right: 8px;
+            }
+
+            .number-element {
+                width: 32px;
+                height: 32px;
+                font-size: 1em;
+            }
+
+            .execute-btn {
+                width: 32px;
+                height: 32px;
+                margin-right: 8px;
+            }
+
+            .execute-btn svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            /* #sort-container の padding は0なので影響なし */
+            .status-text {
+                font-size: 1em;
+                min-width: 50px;
+                line-height: 32px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="main">
+        <div class="left-pane">
+            <img src="select.png" alt="select" width="98%">
+        </div>
+        <div class="right-pane">
+            <div id="main-app-container">
+                <div id="controls-container">
+                    <div class="settings-group">
+                        <div class="control-row">
+                            <label for="array-size-slider">要素数:</label>
+                            <input type="range" id="array-size-slider" min="5" max="10" value="7">
+                            <span id="array-size-value">7</span>
+                        </div>
+                        <div class="control-row">
+                            <label>文字種:</label>
+                            <div class="radio-group">
+                                <label><input type="radio" name="char-type" value="numbers" checked> 数字</label>
+                                <label><input type="radio" name="char-type" value="alphabets"> ABC</label>
+                                <label><input type="radio" name="char-type" value="hiragana"> ひらがな</label>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="reset-button">更新して開始</button>
+                </div>
+
+                <div id="sort-container">
+                    <!-- JavaScript will populate this area -->
+                </div>
+            </div>
+
+            <script>
+                let initialArray = [];
+                let currentArray = [];
+                let currentPass = 0;
+                let selectedCharType = 'numbers';
+
+                const sortContainer = document.getElementById('sort-container');
+                let allRowsElements = [];
+                let allNumberElementsInRows = [];
+                let allExecuteButtons = [];
+                let allStatusTexts = [];
+
+                const arraySizeSlider = document.getElementById('array-size-slider');
+                const arraySizeValueDisplay = document.getElementById('array-size-value');
+                const resetButton = document.getElementById('reset-button');
+                const charTypeRadios = document.querySelectorAll('input[name="char-type"]');
+
+                function generateRandomArray(size, type) {
+                    const arr = new Set();
+                    let sourceChars;
+
+                    if (type === 'numbers') {
+                        while (arr.size < size) {
+                            arr.add(Math.floor(Math.random() * 90) + 10); // Numbers 10-99 for two digits
+                        }
+                        return Array.from(arr);
+                    } else if (type === 'alphabets') {
+                        sourceChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                        while (arr.size < size) {
+                            arr.add(sourceChars.charAt(Math.floor(Math.random() * sourceChars.length)));
+                        }
+                    } else if (type === 'hiragana') {
+                        sourceChars = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん";
+                        const minRequiredUnique = 10;
+                        if (sourceChars.length < minRequiredUnique && size > sourceChars.length) {
+                            console.warn("Warning: Hiragana source characters might not be enough for unique values if size is large.");
+                        }
+                        while (arr.size < size) {
+                            arr.add(sourceChars.charAt(Math.floor(Math.random() * sourceChars.length)));
+                        }
+                    }
+                    return Array.from(arr);
+                }
+
+
+                function createSelectElement(id, value, optionsArray, stateClasses, isDisabled) {
+                    const select = document.createElement('select');
+                    select.id = id;
+                    select.className = `number-element ${stateClasses}`;
+                    select.disabled = isDisabled;
+                    const stringValueToSelect = String(value);
+
+                    const allPotentialOptions = [value, ...optionsArray];
+                    const uniqueSortedOptions = [...new Set(allPotentialOptions)].sort((a, b) => {
+                        if (selectedCharType === 'numbers') {
+                            const numA = Number(a); const numB = Number(b);
+                            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                        }
+                        return String(a).localeCompare(String(b));
+                    });
+
+                    uniqueSortedOptions.forEach(optVal => {
+                        const option = document.createElement('option');
+                        const stringOptVal = String(optVal);
+                        option.value = stringOptVal;
+                        option.textContent = stringOptVal;
+                        select.appendChild(option);
+                    });
+
+                    select.value = stringValueToSelect;
+
+                    if (select.value !== stringValueToSelect && select.options.length > 0) {
+                        for (let i = 0; i < select.options.length; i++) {
+                            if (select.options[i].textContent === stringValueToSelect) {
+                                select.selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                    if (select.options.length === 0 && typeof value !== 'undefined' && value !== null) {
+                        const option = document.createElement('option');
+                        option.value = stringValueToSelect;
+                        option.textContent = stringValueToSelect;
+                        select.appendChild(option);
+                        select.value = stringValueToSelect;
+                    }
+                    return select;
+                }
+
+
+                function generateRows() {
+                    sortContainer.innerHTML = '';
+                    allRowsElements = [];
+                    allNumberElementsInRows = [];
+                    allExecuteButtons = [];
+                    allStatusTexts = [];
+
+                    const numElementsInCurrentArray = currentArray.length;
+
+                    if (numElementsInCurrentArray > 0) {
+                        const initialDisplayRowDiv = document.createElement('div');
+                        initialDisplayRowDiv.className = 'step-row visible initial-array-row';
+                        const initialSquaresDiv = document.createElement('div');
+                        initialSquaresDiv.className = 'number-squares';
+                        initialArray.forEach((val, index) => {
+                            const selectEl = createSelectElement(
+                                `initial-el-${index}`, val, [val], '', true
+                            );
+                            initialSquaresDiv.appendChild(selectEl);
+                        });
+                        initialDisplayRowDiv.appendChild(initialSquaresDiv);
+                        sortContainer.appendChild(initialDisplayRowDiv);
+                    }
+
+                    for (let i = 0; i < numElementsInCurrentArray; i++) {
+                        const rowDiv = document.createElement('div');
+                        rowDiv.className = 'step-row';
+                        rowDiv.id = `step-${i}`;
+
+                        const squaresDiv = document.createElement('div');
+                        squaresDiv.className = 'number-squares';
+                        const currentNumberElementsForRow = [];
+                        for (let j = 0; j < numElementsInCurrentArray; j++) {
+                            const selectEl = createSelectElement(`el-${i}-${j}`, '', [], 'state-unsorted', true);
+                            squaresDiv.appendChild(selectEl);
+                            currentNumberElementsForRow.push(selectEl);
+                        }
+                        allNumberElementsInRows.push(currentNumberElementsForRow);
+                        rowDiv.appendChild(squaresDiv);
+
+                        if (i < numElementsInCurrentArray - 1) {
+                            const button = document.createElement('button');
+                            button.className = 'execute-btn';
+                            button.dataset.step = i;
+                            button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>';
+                            button.disabled = true;
+                            button.addEventListener('click', handleExecute);
+                            allExecuteButtons[i] = button;
+                            rowDiv.appendChild(button);
+                        }
+
+                        const statusSpan = document.createElement('span');
+                        statusSpan.className = 'status-text';
+                        statusSpan.id = `status-${i}`;
+                        allStatusTexts[i] = statusSpan;
+                        rowDiv.appendChild(statusSpan);
+
+                        sortContainer.appendChild(rowDiv);
+                        allRowsElements.push(rowDiv);
+                    }
+                }
+
+                function prepareStepUI(passIdx, arrayToDisplay) {
+                    const currentRowElement = allRowsElements[passIdx];
+                    currentRowElement.classList.add('visible');
+                    const numElementsInDisplayArray = arrayToDisplay.length;
+
+                    let actualMinValueInUnsorted = arrayToDisplay[passIdx];
+                    let indexOfActualMinInArray = passIdx;
+
+                    for (let i = passIdx + 1; i < numElementsInDisplayArray; i++) {
+                        let comparisonResult;
+                        if (selectedCharType === 'numbers') {
+                            comparisonResult = Number(arrayToDisplay[i]) < Number(actualMinValueInUnsorted);
+                        } else {
+                            comparisonResult = String(arrayToDisplay[i]).localeCompare(String(actualMinValueInUnsorted)) < 0;
+                        }
+                        if (comparisonResult) {
+                            actualMinValueInUnsorted = arrayToDisplay[i];
+                            indexOfActualMinInArray = i;
+                        }
+                    }
+
+                    const currentSelectsInRow = allNumberElementsInRows[passIdx];
+                    const allPossibleOptions = [...new Set(initialArray)];
+
+                    currentSelectsInRow.forEach((selectEl, colIndex) => {
+                        selectEl.className = 'number-element';
+                        selectEl.innerHTML = '';
+                        let value = arrayToDisplay[colIndex];
+                        let optionsSource = [value];
+                        let isDisabled = true;
+                        let stateClasses = '';
+
+                        if (colIndex < passIdx) {
+                            stateClasses = 'state-sorted';
+                        } else {
+                            isDisabled = false;
+                            optionsSource = allPossibleOptions;
+                            if (colIndex === passIdx) {
+                                stateClasses = 'state-interactive-swap-target';
+                            } else if (colIndex === indexOfActualMinInArray) {
+                                stateClasses = 'state-interactive-swap-source';
+                            } else {
+                                stateClasses = 'state-unsorted';
+                            }
+                        }
+
+                        const newSelectEl = createSelectElement(
+                            selectEl.id,
+                            value,
+                            optionsSource,
+                            stateClasses,
+                            isDisabled
+                        );
+                        selectEl.parentNode.replaceChild(newSelectEl, selectEl);
+                        currentSelectsInRow[colIndex] = newSelectEl;
+                    });
+
+                    if (allExecuteButtons[passIdx]) {
+                        allExecuteButtons[passIdx].disabled = false;
+                    }
+                    if (allStatusTexts[passIdx]) {
+                        allStatusTexts[passIdx].textContent = '';
+                        allStatusTexts[passIdx].className = 'status-text';
+                    }
+                }
+
+                function displayAllSorted(sortedArray) {
+                    const numElementsInSortedArray = sortedArray.length;
+                    if (numElementsInSortedArray === 0) {
+                        const emptyMsgDiv = document.createElement('div');
+                        emptyMsgDiv.className = 'empty-array-message';
+                        emptyMsgDiv.textContent = "完了 (空)";
+                        sortContainer.appendChild(emptyMsgDiv);
+                        return;
+                    }
+
+                    const finalRowIdx = numElementsInSortedArray - 1;
+                    if (allRowsElements[finalRowIdx]) {
+                        allRowsElements[finalRowIdx].classList.add('visible');
+                        const selectsInFinalRow = allNumberElementsInRows[finalRowIdx];
+
+                        if (selectsInFinalRow) {
+                            selectsInFinalRow.forEach((select, colIndex) => {
+                                const finalValue = sortedArray[colIndex];
+                                const newSelectEl = createSelectElement(
+                                    select.id,
+                                    finalValue,
+                                    [finalValue],
+                                    'state-final-orange',
+                                    true
+                                );
+                                select.parentNode.replaceChild(newSelectEl, select);
+                                allNumberElementsInRows[finalRowIdx][colIndex] = newSelectEl;
+                            });
+                        }
+                        if (allStatusTexts[finalRowIdx]) {
+                            allStatusTexts[finalRowIdx].textContent = '完了';
+                            allStatusTexts[finalRowIdx].className = 'status-text status-complete';
+                        }
+                    }
+                }
+
+                function handleExecute(event) {
+                    const button = event.currentTarget;
+                    const passIdxOfButton = parseInt(button.dataset.step);
+
+                    if (passIdxOfButton !== currentPass) return;
+
+                    const currentStatusText = allStatusTexts[currentPass];
+                    const userCurrentRowState = [];
+                    const selectsInCurrentRow = allNumberElementsInRows[currentPass];
+                    selectsInCurrentRow.forEach(selectEl => {
+                        userCurrentRowState.push(selectEl.value);
+                    });
+
+                    let tempArrayForCalculation = [...currentArray];
+                    let actualMinValue = tempArrayForCalculation[currentPass];
+                    let indexOfMin = currentPass;
+
+                    for (let i = currentPass + 1; i < tempArrayForCalculation.length; i++) {
+                        let comparisonResult;
+                        if (selectedCharType === 'numbers') {
+                            comparisonResult = Number(tempArrayForCalculation[i]) < Number(actualMinValue);
+                        } else {
+                            comparisonResult = String(tempArrayForCalculation[i]).localeCompare(String(actualMinValue)) < 0;
+                        }
+                        if (comparisonResult) {
+                            actualMinValue = tempArrayForCalculation[i];
+                            indexOfMin = i;
+                        }
+                    }
+
+                    if (indexOfMin !== currentPass) {
+                        [tempArrayForCalculation[currentPass], tempArrayForCalculation[indexOfMin]] =
+                            [tempArrayForCalculation[indexOfMin], tempArrayForCalculation[currentPass]];
+                    }
+                    const expectedRowStateAfterCorrectSwap = tempArrayForCalculation;
+
+                    let isUserSetupCorrect = true;
+                    for (let i = 0; i < currentArray.length; i++) {
+                        if (userCurrentRowState[i] !== String(expectedRowStateAfterCorrectSwap[i])) {
+                            isUserSetupCorrect = false;
+                            break;
+                        }
+                    }
+
+                    if (isUserSetupCorrect) {
+                        currentStatusText.textContent = 'OK';
+                        currentStatusText.className = 'status-text status-ok';
+                        button.disabled = true;
+                        currentArray = [...expectedRowStateAfterCorrectSwap];
+
+                        allNumberElementsInRows[currentPass].forEach((sel, idx) => {
+                            const finalValue = currentArray[idx];
+                            let newClasses = '';
+                            if (idx <= currentPass) {
+                                newClasses = 'state-sorted';
+                            } else {
+                                newClasses = 'state-unsorted';
+                            }
+                            const newSelectEl = createSelectElement(
+                                sel.id,
+                                finalValue,
+                                [finalValue],
+                                newClasses,
+                                true
+                            );
+                            sel.parentNode.replaceChild(newSelectEl, sel);
+                            allNumberElementsInRows[currentPass][idx] = newSelectEl;
+                        });
+
+                        currentPass++;
+
+                        if (currentPass < currentArray.length - 1) {
+                            prepareStepUI(currentPass, currentArray);
+                        } else {
+                            displayAllSorted(currentArray);
+                        }
+                    } else {
+                        currentStatusText.textContent = 'エラー';
+                        currentStatusText.className = 'status-text status-error';
+                    }
+                }
+
+                function initializeSortProcess() {
+                    const selectedSize = parseInt(arraySizeSlider.value);
+                    selectedCharType = document.querySelector('input[name="char-type"]:checked').value;
+
+                    initialArray = generateRandomArray(selectedSize, selectedCharType);
+                    currentArray = [...initialArray];
+                    currentPass = 0;
+
+                    sortContainer.innerHTML = '';
+                    allRowsElements = [];
+                    allNumberElementsInRows = [];
+                    allExecuteButtons = [];
+                    allStatusTexts = [];
+
+                    generateRows();
+
+                    const numElementsInCurrentArray = currentArray.length;
+
+                    if (numElementsInCurrentArray === 0) {
+                        displayAllSorted([]);
+                    } else if (numElementsInCurrentArray === 1) {
+                        displayAllSorted(currentArray);
+                    } else {
+                        prepareStepUI(0, currentArray);
+                    }
+                }
+
+                arraySizeSlider.addEventListener('input', (event) => {
+                    arraySizeValueDisplay.textContent = event.target.value;
+                });
+
+                resetButton.addEventListener('click', initializeSortProcess);
+
+                document.addEventListener('DOMContentLoaded', () => {
+                    // Ensure the script targets exist, which they will if script is at end of body
+                    // or if this specific component is dynamically loaded after DOM is ready.
+                    // If #main-app-container itself is part of what's loaded by this script,
+                    // then some element lookups (like arraySizeSlider) need to be inside functions called later
+                    // or this DOMContentLoaded listener ensures they are found if the script is in <head>.
+                    // Given script is at the end of the embedded component's body, this is fine.
+
+                    // Initialize controls if they are part of this embedded component
+                    if (arraySizeSlider) { // Check if elements exist before using them
+                        arraySizeSlider.value = "7";
+                    }
+                    if (arraySizeValueDisplay) {
+                        arraySizeValueDisplay.textContent = "7";
+                    }
+
+                    initializeSortProcess();
+                });
+            </script>
+        </div>
+    </div>
+</body>
+
+</html>

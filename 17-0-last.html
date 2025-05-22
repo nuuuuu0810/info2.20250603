@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ソートアルゴリズム目次</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background-color: #fff;
+            /* Or a light gray if the footer is the only content */
+            color: #1d1d1f;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .a-footer {
+            /*background-color: #f5f5f7;*/
+            font-size: 12px;
+            line-height: 1.33337;
+            font-weight: 400;
+            letter-spacing: -.01em;
+        }
+
+        .footer-content {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 0 22px;
+        }
+
+        .footer-columns {
+            display: flex;
+            flex-wrap: wrap;
+            /* Allow wrapping on smaller screens if needed */
+            justify-content: space-between;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #d2d2d7;
+        }
+
+        .column {
+            flex: 1;
+            min-width: 160px;
+            /* Minimum width before wrapping or shrinking */
+            padding-right: 20px;
+            /* Space between columns */
+            margin-bottom: 20px;
+            /* Space if columns wrap */
+            margin-top: 7%;
+        }
+
+        .column:last-child {
+            padding-right: 0;
+        }
+
+        .column h4 {
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 2em;
+            margin-bottom: 0.8em;
+            color: #515154;
+        }
+
+        .column h4 a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .column ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .column ul li {
+            margin-bottom: 0.8em;
+        }
+
+        .column ul li a,
+        .footer-notes a,
+        .legal-links a {
+            color: #515154;
+            text-decoration: none;
+        }
+
+        .column ul li a:hover,
+        .footer-notes a:hover,
+        .legal-links a:hover {
+            text-decoration: underline;
+        }
+
+        .footer-notes {
+            padding-top: 20px;
+            padding-bottom: 20px;
+            margin-bottom: 15px;
+            color: #515154;
+            border-bottom: 1px solid #d2d2d7;
+        }
+
+        .footer-notes h5 {
+            font-size: 14px;
+            margin-top: 12px;
+            margin-bottom: 12px;
+        }
+
+
+        .footer-notes p {
+            margin: 6px;
+        }
+
+        .footer-legal {
+            display: flex;
+            flex-wrap: wrap;
+            /* Allow wrapping for copyright and links */
+            justify-content: space-between;
+            align-items: center;
+            color: #515154;
+        }
+
+        .copyright p {
+            margin: 0 0 10px 0;
+            /* Margin for spacing if nav wraps below */
+        }
+
+        .legal-links a {
+            margin-left: 10px;
+            padding: 0 5px;
+            /* Slight padding for easier clicking */
+            white-space: nowrap;
+            /* Keep links on one line if possible */
+        }
+
+        .legal-links a:not(:last-child) {
+            border-right: 1px solid #d2d2d7;
+        }
+
+        .legal-links a:first-child {
+            margin-left: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="a-footer">
+        <div class="footer-content">
+            <div class="footer-columns">
+                <div class="column">
+                    <h4><a href="main.html#1-0" target="_parent">ソートとは</a></h4>
+                    <ul>
+                        <li><a href="main.html#1-1" target="_parent">人間のソート（トランプ）</a></li>
+                        <li><a href="main.html#1-2" target="_parent">パソコンのソート</a></li>
+                    </ul>
+                    <h4><a href="main.html#2-0" target="_parent">選択ソート</a></h4>
+                    <ul>
+                        <li><a href="main.html#2-1" target="_parent">選択ソートのステップ</a></li>
+                        <li><a href="main.html#2-2" target="_parent">選択ソートの仕組み</a></li>
+                    </ul>
+                    <h4><a href="main.html#3-0" target="_parent">選択ソートの演習</a></h4>
+                    <ul>
+                        <li><a href="main.html#3-1" target="_parent">選択ソート（5個）</a></li>
+                        <li><a href="main.html#3-2" target="_parent">選択ソート（7個）</a></li>
+                        <li><a href="main.html#3-3" target="_parent">選択ソート（10個）</a></li>
+                        <li><a href="main.html#3-4" target="_parent">選択ソート（ランダム）</a></li>
+                    </ul>
+                    <h4><a href="main.html#4-0" target="_parent">実社会への応用</a></h4>
+                    <ul>
+                        <li><a href="main.html#4-1" target="_parent">検索システムへの応用</a></li>
+                        <li><a href="main.html#4-2" target="_parent">電話帳システムへの応用</a></li>
+                        <li><a href="main.html#4-3" target="_parent">メールシステムへの応用</a></li>
+                    </ul>
+                </div>
+
+                <div class="column">
+
+                    <h4><a href="main.html#5-0" target="_parent">挿入ソート</a></h4>
+                    <ul>
+                        <li><a href="main.html#5-1" target="_parent">挿入ソートのステップ</a></li>
+                        <li><a href="main.html#5-2" target="_parent">挿入ソートの仕組み</a></li>
+                    </ul>
+                    <h4><a href="main.html#6-0" target="_parent">クイックソート</a></h4>
+                    <ul>
+                        <li><a href="main.html#6-1" target="_parent">クイックソートのステップ</a></li>
+                        <li><a href="main.html#6-2" target="_parent">クイックソートの仕組み</a></li>
+                    </ul>
+                    <h4><a href="main.html#7-0" target="_parent">シェルソート</a></h4>
+                    <ul>
+                        <li><a href="main.html#7-1" target="_parent">シェルソートのステップ</a></li>
+                        <li><a href="main.html#7-2" target="_parent">シェルソートの仕組み</a></li>
+                    </ul>
+                    <h4><a href="main.html#8-0" target="_parent">マージソート</a></h4>
+                    <ul>
+                        <li><a href="main.html#8-1" target="_parent">マージソートのステップ</a></li>
+                        <li><a href="main.html#8-2" target="_parent">マージソートの仕組み</a></li>
+                    </ul>
+                    <h4><a href="main.html#9-0" target="_parent">バブルソート</a></h4>
+                    <ul>
+                        <li><a href="main.html#9-1" target="_parent">バブルソートのステップ</a></li>
+                        <li><a href="main.html#9-2" target="_parent">バブルソートの仕組み</a></li>
+                    </ul>
+
+                </div>
+
+                <div class="column">
+
+                    <h4><a href="main.html#10-0" target="_parent">挿入ソートの演習</a></h4>
+                    <ul>
+                        <li><a href="main.html#10-1" target="_parent">挿入ソート（5個）</a></li>
+                        <li><a href="main.html#10-2" target="_parent">挿入ソート（7個）</a></li>
+                        <li><a href="main.html#10-3" target="_parent">挿入ソート（10個）</a></li>
+                        <li><a href="main.html#10-4" target="_parent">挿入ソート（ランダム）</a></li>
+                    </ul>
+                    <h4><a href="main.html#11-0" target="_parent">クイックソートの演習</a></h4>
+                    <ul>
+                        <li><a href="main.html#11-1" target="_parent">クイックソート（5個）</a></li>
+                        <li><a href="main.html#11-2" target="_parent">クイックソート（7個）</a></li>
+                        <li><a href="main.html#11-3" target="_parent">クイックソート（10個）</a></li>
+                        <li><a href="main.html#11-4" target="_parent">クイックソート（ランダム）</a></li>
+                    </ul>
+                    <h4><a href="main.html#12-0" target="_parent">シェルソートの演習</a></h4>
+                    <ul>
+                        <li><a href="main.html#12-1" target="_parent">シェルソート（5個）</a></li>
+                        <li><a href="main.html#12-2" target="_parent">シェルソート（7個）</a></li>
+                        <li><a href="main.html#12-3" target="_parent">シェルソート（10個）</a></li>
+                        <li><a href="main.html#12-4" target="_parent">シェルソート（ランダム）</a></li>
+                    </ul>
+                </div>
+
+                <div class="column">
+                    <h4><a href="main.html#13-0" target="_parent">マージソートの演習</a></h4>
+                    <ul>
+                        <li><a href="main.html#13-1" target="_parent">マージソート（5個）</a></li>
+                        <li><a href="main.html#13-2" target="_parent">マージソート（7個）</a></li>
+                        <li><a href="main.html#13-3" target="_parent">マージソート（10個）</a></li>
+                        <li><a href="main.html#13-4" target="_parent">マージソート（ランダム）</a></li>
+                    </ul>
+                    <h4><a href="main.html#14-0" target="_parent">バブルソートの演習</a></h4>
+                    <ul>
+                        <li><a href="main.html#14-1" target="_parent">バブルソート（5個）</a></li>
+                        <li><a href="main.html#14-2" target="_parent">バブルソート（7個）</a></li>
+                        <li><a href="main.html#14-3" target="_parent">バブルソート（10個）</a></li>
+                        <li><a href="main.html#14-4" target="_parent">バブルソート（ランダム）</a></li>
+                    </ul>
+                    <h4><a href="main.html#15-0" target="_parent">計算量</a></h4>
+                    <ul>
+                        <li><a href="main.html#15-1" target="_parent">グループワーク</a></li>
+                        <li><a href="main.html#15-2" target="_parent">各グループの状況</a></li>
+                        <li><a href="main.html#15-3" target="_parent">計算量の比較</a></li>
+                    </ul>
+                    <h4><a href="main.html#16-0" target="_parent">まとめ</a></h4>
+                    <ul>
+                        <li><a href="main.html#16-1" target="_parent">まとめ</a></li>
+                    </ul>
+                    <h4><a href="main.html#17-0" target="_parent">最後に</a></h4>
+                </div>
+
+
+            </div>
+
+            <div class="footer-notes">
+                <h5>情報科教育法Ⅱ 模擬授業 ”ソート”</h5>
+                <p>・HTMLのコードを作成する際に、Google AI Studioを使用しています。</p>
+                <p>・OSやブラウザの互換性の影響で、うまく表示されない場合があります。</p>
+            </div>
+
+            <div class="footer-legal">
+                <div class="copyright">
+                    <p>Copyright © 2025 Yuki Onoda. All rights reserved.</p>
+                </div>
+                <!-- <div class="country">
+                    <a href="#">日本</a>
+                </div> -->
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>ソートアルゴリズム学習ツール - バブルソート</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* --- スタイル 1: Flexboxレイアウト (挿入ソートのものをベース) --- */
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        #main {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .left-pane {
+            width: 55%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #FFFFFF;
+            overflow-y: auto;
+        }
+
+        .left-pane h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .left-pane p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .right-pane {
+            width: 45%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #FFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            /* コントロールとソートモジュール間のスペース */
+            overflow-y: auto;
+            height: 100%;
+        }
+
+        /* --- コントロールパネルのスタイル --- */
+        .controls-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            /* 上下左右のパディングを調整 */
+            background-color: #ffffff;
+            /* 背景色を白に */
+            border-radius: 8px;
+            /* 角丸をソートモジュールと合わせる */
+            /* 軽い影を追加 */
+            width: 100%;
+            max-width: 750px;
+            box-sizing: border-box;
+        }
+
+        .controls-container button {
+            padding: 8px 12px;
+            /* パディング調整 */
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            background-color: #f0f0f0;
+            /* ボタン背景色 */
+            cursor: pointer;
+            font-weight: normal;
+            /* 文字の太さを通常に */
+            font-size: 0.9em;
+            /* 文字サイズを少し小さく */
+            transition: background-color 0.2s ease;
+        }
+
+        .controls-container button:hover {
+            background-color: #e0e0e0;
+        }
+
+        .controls-container button:disabled {
+            background-color: #f5f5f5;
+            color: #aaa;
+            cursor: not-allowed;
+            border-color: #ddd;
+        }
+
+        .controls-container label {
+            font-size: 0.9em;
+            color: #333;
+        }
+
+        #speed-slider {
+            flex-grow: 1;
+            max-width: 180px;
+            /* スライダーの最大幅調整 */
+            margin: 0 5px;
+            /* ラベルとの間隔 */
+        }
+
+        #speed-value-display {
+            min-width: 35px;
+            /* "0.5x" や "2.0x" の表示に対応 */
+            text-align: right;
+            font-size: 0.9em;
+            color: #333;
+        }
+
+
+        .sort-module-wrapper {
+            width: 100%;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* height: 95vw;  高さは内容に任せるか、calcで調整 */
+            padding-left: 30px;
+            /* 軽い影を追加 */
+            height: 80vw;
+        }
+
+
+        .pane-title {
+            font-size: 1.6em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            text-align: center;
+            width: 100%;
+        }
+
+
+        /* --- バブルソート 手動ステップ (挿入ソートのものをベースに調整) --- */
+        #bubble_main-app-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 20px;
+            /* 棒グラフとの間隔 */
+        }
+
+        #bubble_sort-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+            width: 100%;
+            /* コンテナ幅を広げる */
+            margin-right: 0;
+            /* 右マージンを削除 */
+        }
+
+        .step-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0;
+            justify-content: flex-start;
+            min-height: 45px;
+            opacity: 1;
+            visibility: visible;
+            height: auto;
+            transition: opacity 0.5s ease-in-out, visibility 0s linear 0s, height 0.5s ease-in-out, margin-bottom 0.5s ease-in-out;
+            position: relative;
+            box-sizing: border-box;
+            padding: 0;
+            width: 100%;
+        }
+
+        .step-row:not(.visible) {
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+            visibility: hidden;
+            pointer-events: none;
+            margin-bottom: 0;
+            transition: opacity 0.3s ease-out, height 0.3s ease-out, margin-bottom 0.3s ease-out, visibility 0s linear 0.3s;
+        }
+
+        .step-row.visible {
+            opacity: 1;
+            height: auto;
+            margin-bottom: 4px;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .initial-array-row.visible {
+            margin-bottom: 8px;
+        }
+
+        .number-squares {
+            display: flex;
+            gap: 6px;
+            margin-right: 10px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            /* 横スクロール可能に */
+            padding-bottom: 5px;
+            /* スクロールバーのためのスペース */
+        }
+
+        .number-element {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            cursor: default;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            text-align: center;
+            text-align-last: center;
+        }
+
+        .number-element option {
+            background-color: white;
+            color: black;
+        }
+
+        .number-element.state-interactive-swap-source,
+        .bar_item.state-interactive-swap-source {
+            background-color: #a0e67c;
+            border-color: #88d86a;
+            cursor: pointer;
+        }
+
+
+        .number-element.state-sorted,
+        .bar_item.state-sorted {
+            background-color: #FFC0CB;
+            /* 薄いピンク (ソート済み) */
+            border-color: #FFB6C1;
+        }
+
+        .number-element.state-unsorted,
+        .bar_item.state-unsorted {
+                        background-color: #00bfff;
+            border-color: #00a0cc;
+            cursor: pointer;
+
+        }
+
+        .number-element.state-unsorted:disabled {
+            background-color: #cccccc;
+            border-color: #b3b3b3;
+        }
+
+        .number-element.state-final-orange,
+        .bar_item.state-final-orange,
+        .number-element.state-initial,
+        .bar_item.state-initial {
+            background-color: #FFC107;
+            /* オレンジ */
+            border-color: #FFA000;
+            color: black;
+            font-weight: bold;
+        }
+
+
+        .number-element:disabled {
+            opacity: 1;
+            cursor: default;
+        }
+
+        .number-element:disabled::-ms-expand {
+            display: none;
+        }
+
+        .execute-btn {
+            background-color: #212121;
+            color: white;
+            border: 1px solid #000;
+            width: 38px;
+            height: 38px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            transition: background-color 0.2s ease;
+            padding: 0;
+            flex-shrink: 0;
+            cursor: pointer;
+            margin-right: 12px;
+        }
+
+        .execute-btn svg {
+            fill: white;
+            width: 16px;
+            height: 16px;
+            display: block;
+        }
+
+        .execute-btn:disabled {
+            background-color: #666666;
+            border-color: #555555;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .execute-btn:disabled svg {
+            fill: #cccccc;
+        }
+
+        .status-text {
+            font-size: 1.0em;
+            font-weight: bold;
+            min-width: 60px;
+            text-align: left;
+            line-height: 40px;
+            flex-shrink: 0;
+        }
+
+        .status-ok {
+            color: #2ecc40;
+        }
+
+        .status-error {
+            color: #ff4136;
+        }
+
+        .status-complete {
+            color: #2ecc40;
+        }
+
+
+        .empty-array-message {
+            padding: 10px;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #555;
+            width: 100%;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 480px) {
+            .controls-container {
+                flex-direction: column;
+                /* スマホでは縦積みに */
+                align-items: stretch;
+                /* 幅を合わせる */
+            }
+
+            #speed-slider {
+                max-width: none;
+                /* 幅制限解除 */
+                width: 100%;
+                /* 幅いっぱい */
+            }
+
+            .number-squares {
+                gap: 4px;
+                margin-right: 8px;
+            }
+
+            .number-element {
+                width: 32px;
+                height: 32px;
+                font-size: 1em;
+            }
+
+            .execute-btn {
+                width: 32px;
+                height: 32px;
+                margin-right: 8px;
+            }
+
+            .execute-btn svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            .status-text {
+                font-size: 1em;
+                min-width: 50px;
+                line-height: 32px;
+            }
+        }
+
+
+        /* --- 同期棒グラフ表示 --- */
+        #sync_bar_graph_container {
+            display: flex;
+            width: 100%;
+            min-height: 200px;
+            padding: 10px 0;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+
+        #bar_items_wrapper {
+            display: flex;
+            gap: 5px;
+            align-items: flex-end;
+            position: relative;
+            overflow-x: auto;
+            /* 横スクロール可能に */
+            padding: 5px;
+            /* スクロールバーのためのスペース */
+            max-width: 100%;
+        }
+
+        .bar_item {
+            width: 40px;
+            text-align: center;
+            border: 1px solid #d0d0d0;
+            background-color: #f0f0f0;
+            font-weight: bold;
+            font-size: 1em;
+            color: #FFFFFF;
+            box-sizing: border-box;
+            position: relative;
+            --value: 1;
+            height: calc(25px + (var(--value) * 15px));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background-color 0.3s ease, border-color 0.3s ease, height 0.3s ease;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="main">
+        <div class="left-pane">
+            <img src="bubble.png" alt="bubble" width="98%">
+        </div>
+        <div class="right-pane">
+            <div class="controls-container">
+                <button id="auto-sort-btn">実行</button>
+                <button id="reset-sort-btn">リセット</button>
+                <label for="speed-slider">速度:</label>
+                <input type="range" id="speed-slider" min="0.1" max="2" value="1.0" step="0.1">
+                <span id="speed-value-display">1.0x</span>
+            </div>
+            <div class="sort-module-wrapper">
+                <div id="sync_bar_graph_container">
+                    <div id="bar_items_wrapper">
+                        <!-- JavaScriptで棒グラフ要素を動的に生成 -->
+                    </div>
+                </div>
+                <div id="bubble_main-app-container">
+                    <div id="bubble_sort-container">
+                        <!-- JavaScript will populate this area -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Global Shared State ---
+        let sharedInitialArray = [];
+
+        // --- Script: Bubble Sort (Manual and Auto) ---
+        let bubble_initialArray = [];
+        let bubble_currentArray = []; // Primarily for manual step state
+        let bubble_currentPass = 0;   // Primarily for manual step state
+        let bubble_allPossibleOptionsForSelect = [];
+
+        const bubble_sortContainer = document.getElementById('bubble_sort-container');
+        let bubble_allRowsElements = [];
+        let bubble_allNumberElementsInRows = [];
+        let bubble_allExecuteButtons = [];
+        let bubble_allStatusTexts = [];
+
+        // --- Auto Sort State ---
+        let isAutoSorting = false;
+        let isAutoPaused = false;
+        let autoSortSpeed = 1000; // Default, will be updated by handleSpeedChange on init
+        let autoSortTimerId = null;
+        let autoSortOuterLoopPass = 0;
+        let autoSortInnerLoopComparison = 0;
+        let tempArrayForAutoSort = [];
+
+        // --- Global Constants for Auto Sort Speed ---
+        const BASE_DELAY_FOR_1X_SPEED = 1000; // Milliseconds for 1.0x speed (base delay for animation steps)
+
+
+        // --- DOM Elements for Controls ---
+        const autoSortBtn = document.getElementById('auto-sort-btn');
+        const resetBtn = document.getElementById('reset-sort-btn');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedValueDisplay = document.getElementById('speed-value-display');
+
+        // --- Bar Graph Sync Logic ---
+        const barGraphItemsWrapper = document.getElementById('bar_items_wrapper');
+
+        function renderBarGraph(arr, elementStates = []) {
+            if (!barGraphItemsWrapper) return;
+            if (barGraphItemsWrapper.children.length !== arr.length && arr.length > 0) {
+                barGraphItemsWrapper.innerHTML = '';
+                arr.forEach((value, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'bar_item';
+                    item.id = `bar_item-${index}`;
+                    barGraphItemsWrapper.appendChild(item);
+                });
+            } else if (arr.length === 0) {
+                barGraphItemsWrapper.innerHTML = '';
+            }
+
+            arr.forEach((value, index) => {
+                const item = document.getElementById(`bar_item-${index}`);
+                if (!item) return;
+                item.textContent = value;
+                item.style.setProperty('--value', value);
+
+                const classesToRemove = [];
+                for (const cls of item.classList) {
+                    if (cls.startsWith('state-')) {
+                        classesToRemove.push(cls);
+                    }
+                }
+                if (classesToRemove.length > 0) {
+                    item.classList.remove(...classesToRemove);
+                }
+                if (elementStates && elementStates[index]) {
+                    item.classList.add(elementStates[index]);
+                } else if (arr.length > 0) {
+                    item.classList.add('state-unsorted');
+                }
+            });
+        }
+
+        // --- bubble_createSelectElement ---
+        function bubble_createSelectElement(id, value, optionsArray, stateClasses, isDisabled) {
+            const select = document.createElement('select'); // Using select for consistency, but it's always disabled in auto-sort
+            select.id = id;
+            select.className = `number-element ${stateClasses}`;
+            select.disabled = isDisabled;
+            const stringValueToSelect = String(value);
+
+            const uniqueStringOptions = [...new Set(optionsArray.map(String))];
+            const sortedOptions = uniqueStringOptions.sort((a, b) => Number(a) - Number(b));
+
+            if (value !== undefined && value !== null && value !== '' && !sortedOptions.includes(stringValueToSelect)) {
+                sortedOptions.push(stringValueToSelect);
+                sortedOptions.sort((a, b) => Number(a) - Number(b));
+            }
+
+            sortedOptions.forEach(optVal => {
+                const option = document.createElement('option');
+                option.value = String(optVal);
+                option.textContent = String(optVal);
+                select.appendChild(option);
+            });
+
+            select.value = stringValueToSelect;
+            if (select.value !== stringValueToSelect && select.options.length > 0) {
+                for (let i = 0; i < select.options.length; i++) {
+                    if (select.options[i].textContent === stringValueToSelect) {
+                        select.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            if (select.options.length === 0 && (value !== undefined && value !== null && value !== '')) {
+                const option = document.createElement('option');
+                option.value = stringValueToSelect;
+                option.textContent = stringValueToSelect;
+                select.appendChild(option);
+                select.value = stringValueToSelect;
+            }
+            return select;
+        }
+
+        // --- bubble_generateRows (For manual and auto display structure) ---
+        function bubble_generateRows() {
+            bubble_sortContainer.innerHTML = '';
+            bubble_allRowsElements = [];
+            bubble_allNumberElementsInRows = [];
+            bubble_allExecuteButtons = [];
+            bubble_allStatusTexts = [];
+            const numElements = bubble_currentArray.length; // Use bubble_currentArray as it's set by initialize
+
+            bubble_allPossibleOptionsForSelect = [];
+            const maxValInArray = numElements > 0 ? Math.max(...bubble_currentArray.map(n => Number(n))) : 0;
+            for (let k = 1; k <= Math.max(10, maxValInArray); k++) {
+                bubble_allPossibleOptionsForSelect.push(String(k));
+            }
+
+            if (numElements > 0) {
+                const initialDisplayRowDiv = document.createElement('div');
+                initialDisplayRowDiv.className = 'step-row visible initial-array-row';
+                const initialSquaresDiv = document.createElement('div');
+                initialSquaresDiv.className = 'number-squares';
+                bubble_initialArray.forEach((val, index) => { // Use bubble_initialArray for the top display
+                    const selectEl = bubble_createSelectElement(`initial-el-${index}`, val, [val], 'state-initial', true);
+                    initialSquaresDiv.appendChild(selectEl);
+                });
+                initialDisplayRowDiv.appendChild(initialSquaresDiv);
+                bubble_sortContainer.appendChild(initialDisplayRowDiv);
+            } else {
+                const emptyMsgDiv = document.createElement('div');
+                emptyMsgDiv.className = 'empty-array-message';
+                emptyMsgDiv.textContent = "ソート対象のデータがありません。";
+                bubble_sortContainer.appendChild(emptyMsgDiv);
+                renderBarGraph([], []);
+                return;
+            }
+
+            for (let i = 0; i < numElements; i++) { // Create rows for each potential pass + final state
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'step-row'; // Initially not visible for auto-sort
+                rowDiv.id = `bubble-step-row-${i}`;
+                const squaresDiv = document.createElement('div');
+                squaresDiv.className = 'number-squares';
+                const currentNumberElementsForRow = [];
+                for (let j = 0; j < numElements; j++) {
+                    // Initially empty, will be populated by auto-sort or manual step
+                    const selectEl = bubble_createSelectElement(`bubble-el-${i}-${j}`, '', bubble_allPossibleOptionsForSelect, 'state-unsorted', true);
+                    squaresDiv.appendChild(selectEl);
+                    currentNumberElementsForRow.push(selectEl);
+                }
+                bubble_allNumberElementsInRows.push(currentNumberElementsForRow);
+                rowDiv.appendChild(squaresDiv);
+
+                if (i < numElements - 1) { // Manual execute buttons for n-1 passes
+                    const button = document.createElement('button');
+                    button.className = 'execute-btn';
+                    button.dataset.passIndex = i;
+                    button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>';
+                    button.disabled = true; // Initially disabled
+                    button.addEventListener('click', bubble_handleExecute);
+                    bubble_allExecuteButtons[i] = button;
+                    rowDiv.appendChild(button);
+                }
+
+                const statusSpan = document.createElement('span');
+                statusSpan.className = 'status-text';
+                statusSpan.id = `bubble-status-${i}`;
+                bubble_allStatusTexts[i] = statusSpan;
+                rowDiv.appendChild(statusSpan);
+                bubble_sortContainer.appendChild(rowDiv);
+                bubble_allRowsElements.push(rowDiv);
+            }
+        }
+
+        // --- bubble_prepareStepUI (For manual step interaction) ---
+        function bubble_prepareStepUI(passIdx, arrayToDisplay) {
+            if (isAutoSorting) return; // Don't interfere with auto sort
+            const numElements = arrayToDisplay.length;
+            if (passIdx >= numElements - 1 || passIdx < 0) return;
+
+            const currentRowElement = bubble_allRowsElements[passIdx];
+            if (!currentRowElement) return;
+            currentRowElement.classList.add('visible');
+            const currentSelectsInRow = bubble_allNumberElementsInRows[passIdx];
+            const optionsForThisStep = bubble_allPossibleOptionsForSelect;
+
+            const currentElementStatesForBarGraph = [];
+
+            currentSelectsInRow.forEach((selectEl, colIndex) => {
+                let valueToDisplay = arrayToDisplay[colIndex];
+                let isDisabled = true;
+                let stateClasses = '';
+
+                if (colIndex <= numElements - 1 - passIdx) {
+                    isDisabled = false;
+                    stateClasses = 'state-interactive-swap-source';
+                } else {
+                    stateClasses = 'state-sorted';
+                }
+                currentElementStatesForBarGraph[colIndex] = stateClasses;
+
+                const newSelectEl = bubble_createSelectElement(selectEl.id, valueToDisplay, optionsForThisStep, stateClasses, isDisabled);
+                selectEl.parentNode.replaceChild(newSelectEl, selectEl);
+                currentSelectsInRow[colIndex] = newSelectEl;
+            });
+
+            if (bubble_allExecuteButtons[passIdx]) {
+                bubble_allExecuteButtons[passIdx].disabled = false;
+            }
+            if (bubble_allStatusTexts[passIdx]) {
+                bubble_allStatusTexts[passIdx].textContent = '';
+                bubble_allStatusTexts[passIdx].className = 'status-text';
+            }
+            renderBarGraph(arrayToDisplay, currentElementStatesForBarGraph);
+        }
+
+        // --- bubble_displayAllSorted (Called at the end of sort) ---
+        function bubble_displayAllSorted(sortedArray) {
+            const numElements = sortedArray.length;
+            if (numElements === 0 && bubble_sortContainer) {
+                bubble_sortContainer.innerHTML = '<div class="empty-array-message">ソート完了 (空の配列)</div>';
+                renderBarGraph([], []);
+                return;
+            }
+            if (!bubble_sortContainer) return;
+
+
+            const finalDisplayRowIdx = Math.max(0, numElements - 1); // Last row index
+
+            // Ensure all necessary rows up to finalDisplayRowIdx are visible
+            for (let i = 0; i <= finalDisplayRowIdx; i++) {
+                if (bubble_allRowsElements[i] && !bubble_allRowsElements[i].classList.contains('visible')) {
+                    bubble_allRowsElements[i].classList.add('visible');
+                }
+            }
+
+            if (bubble_allRowsElements[finalDisplayRowIdx] && bubble_allNumberElementsInRows[finalDisplayRowIdx]) {
+                const selectsInFinalRow = bubble_allNumberElementsInRows[finalDisplayRowIdx];
+                selectsInFinalRow.forEach((select, colIndex) => {
+                    const finalValue = sortedArray[colIndex];
+                    const newSelectEl = bubble_createSelectElement(select.id, finalValue, [finalValue], 'state-final-orange', true);
+                    if (select.parentNode) {
+                        select.parentNode.replaceChild(newSelectEl, select);
+                    }
+                    selectsInFinalRow[colIndex] = newSelectEl; // Update reference
+                });
+                if (bubble_allStatusTexts[finalDisplayRowIdx]) {
+                    bubble_allStatusTexts[finalDisplayRowIdx].textContent = '完了';
+                    bubble_allStatusTexts[finalDisplayRowIdx].className = 'status-text status-complete';
+                }
+                // Hide execute button if it exists on the last row (shouldn't for numElements-1)
+                if (bubble_allExecuteButtons[finalDisplayRowIdx]) {
+                    bubble_allExecuteButtons[finalDisplayRowIdx].style.display = 'none';
+                }
+            } else if (numElements === 1 && bubble_sortContainer.children.length > 0) {
+                // Special case for single element array if dedicated row logic above doesn't catch it
+                const initialRowSquares = bubble_sortContainer.querySelector('.initial-array-row .number-squares');
+                if (initialRowSquares && initialRowSquares.firstChild) {
+                    const selectEl = initialRowSquares.firstChild;
+                    const newSelectEl = bubble_createSelectElement(selectEl.id, sortedArray[0], [sortedArray[0]], 'state-final-orange', true);
+                    selectEl.parentNode.replaceChild(newSelectEl, selectEl);
+                }
+                if (bubble_allRowsElements.length === 0 || !bubble_allStatusTexts[0]) { // if no status row for single element
+                    const completeMsgRow = document.createElement('div');
+                    completeMsgRow.className = 'step-row visible';
+                    const statusSpan = document.createElement('span');
+                    statusSpan.className = 'status-text status-complete';
+                    statusSpan.textContent = '完了';
+                    statusSpan.style.paddingLeft = '10px'; // Align with other status texts
+                    completeMsgRow.appendChild(statusSpan);
+                    bubble_sortContainer.appendChild(completeMsgRow);
+                }
+            }
+
+
+            renderBarGraph(sortedArray, sortedArray.map(() => 'state-final-orange'));
+        }
+
+        // --- bubble_handleExecute (Manual step execution) ---
+        function bubble_handleExecute(event) {
+            if (isAutoSorting) return; // Prevent manual execution during auto sort
+
+            const button = event.currentTarget;
+            const passIdxOfButton = parseInt(button.dataset.passIndex);
+            if (passIdxOfButton !== bubble_currentPass) return;
+
+            const numElements = bubble_currentArray.length;
+            const currentStatusText = bubble_allStatusTexts[bubble_currentPass];
+            const userSelectedRowState = [];
+            const selectsInCurrentRow = bubble_allNumberElementsInRows[bubble_currentPass];
+
+            selectsInCurrentRow.forEach(selectEl => {
+                userSelectedRowState.push(Number(selectEl.value));
+            });
+
+            let tempArrayForCalculation = [...bubble_currentArray];
+            for (let j = 0; j < numElements - 1 - bubble_currentPass; j++) {
+                if (tempArrayForCalculation[j] > tempArrayForCalculation[j + 1]) {
+                    [tempArrayForCalculation[j], tempArrayForCalculation[j + 1]] = [tempArrayForCalculation[j + 1], tempArrayForCalculation[j]];
+                }
+            }
+            const expectedRowStateAfterBubblePass = tempArrayForCalculation;
+
+            let isUserSetupCorrect = true;
+            for (let i = 0; i < numElements; i++) {
+                if (userSelectedRowState[i] !== expectedRowStateAfterBubblePass[i]) {
+                    isUserSetupCorrect = false;
+                    break;
+                }
+            }
+
+            const elementStatesForBarGraph = [];
+            if (isUserSetupCorrect) {
+                currentStatusText.textContent = 'OK';
+                currentStatusText.className = 'status-text status-ok';
+                button.disabled = true;
+                bubble_currentArray = [...expectedRowStateAfterBubblePass];
+
+                const fixedIndexBoundary = numElements - 1 - bubble_currentPass;
+                bubble_allNumberElementsInRows[bubble_currentPass].forEach((sel, idx) => {
+                    const finalValueInCell = bubble_currentArray[idx];
+                    let cellStateClass = (idx >= fixedIndexBoundary) ? 'state-sorted' : 'state-unsorted';
+                    elementStatesForBarGraph[idx] = cellStateClass;
+                    const newSelectEl = bubble_createSelectElement(sel.id, finalValueInCell, [finalValueInCell], cellStateClass, true);
+                    sel.parentNode.replaceChild(newSelectEl, sel);
+                    bubble_allNumberElementsInRows[bubble_currentPass][idx] = newSelectEl;
+                });
+                renderBarGraph(bubble_currentArray, elementStatesForBarGraph);
+
+                bubble_currentPass++;
+                if (bubble_currentPass < numElements - 1) {
+                    bubble_prepareStepUI(bubble_currentPass, bubble_currentArray);
+                } else {
+                    bubble_displayAllSorted(bubble_currentArray);
+                }
+            } else {
+                currentStatusText.textContent = 'エラー';
+                currentStatusText.className = 'status-text status-error';
+                const userAttemptStates = selectsInCurrentRow.map(sel => sel.className.split(' ').find(c => c.startsWith('state-')) || 'state-unsorted');
+                renderBarGraph(userSelectedRowState, userAttemptStates);
+            }
+        }
+
+        // --- Auto Sort Logic ---
+        function handleAutoSortClick() {
+            if (isAutoSorting) {
+                if (isAutoPaused) {
+                    resumeAutoSort();
+                } else {
+                    pauseAutoSort();
+                }
+            } else {
+                startAutoSort();
+            }
+        }
+
+        function startAutoSort() {
+            if (isAutoSorting) return;
+            isAutoSorting = true;
+            isAutoPaused = false;
+            autoSortBtn.textContent = '一時停止';
+            resetBtn.disabled = true;
+            disableManualControls();
+
+            // Initialize or re-initialize sort process for auto-sort view
+            bubble_initializeSortProcess(true); // Pass a flag to indicate it's for auto-sort start
+            tempArrayForAutoSort = [...bubble_initialArray]; // Use the global initial array
+
+            autoSortOuterLoopPass = 0;
+            autoSortInnerLoopComparison = 0;
+
+            // Make sure all step rows are initially hidden, except the initial array display
+            bubble_allRowsElements.forEach(row => row.classList.remove('visible'));
+
+            if (tempArrayForAutoSort.length > 0 && bubble_allRowsElements[0]) {
+                // Display initial state in the first "pass" row if it's a fresh start
+                updateRowValuesAndStates(0, tempArrayForAutoSort, tempArrayForAutoSort.map(() => 'state-unsorted'));
+                bubble_allRowsElements[0].classList.add('visible');
+            } else if (tempArrayForAutoSort.length <= 1) { // Already sorted or empty
+                bubble_displayAllSorted(tempArrayForAutoSort);
+                stopAndResetAutoSortUI(false); // Just update buttons, don't re-init
+                return;
+            }
+
+            autoSortNextVisualStep();
+        }
+
+        function pauseAutoSort() {
+            isAutoPaused = true;
+            autoSortBtn.textContent = '再開';
+            clearTimeout(autoSortTimerId);
+        }
+
+        function resumeAutoSort() {
+            if (!isAutoSorting || !isAutoPaused) return;
+            isAutoPaused = false;
+            autoSortBtn.textContent = '一時停止';
+            autoSortNextVisualStep();
+        }
+
+        function stopAndResetAutoSortUI(doReInitializeBubbleSort = true) {
+            isAutoSorting = false;
+            isAutoPaused = false;
+            clearTimeout(autoSortTimerId);
+            if (autoSortBtn) {
+                autoSortBtn.textContent = '実行';
+                autoSortBtn.disabled = false;
+            }
+            if (resetBtn) {
+                resetBtn.disabled = false;
+            }
+
+            if (doReInitializeBubbleSort) {
+                bubble_initializeSortProcess(); // This will re-enable manual controls as needed
+            }
+        }
+
+        function handleResetClick() {
+            stopAndResetAutoSortUI(true); // Full reset and re-initialize
+        }
+
+        function handleSpeedChange() {
+            const speedMultiplier = parseFloat(speedSlider.value);
+            speedValueDisplay.textContent = speedMultiplier.toFixed(1) + "x";
+
+            // Calculate actual delay: higher multiplier = faster speed = smaller delay.
+            // Ensure speedMultiplier is not zero to prevent division by zero,
+            // though slider's min="0.1" should prevent this.
+            if (speedMultiplier > 0) {
+                autoSortSpeed = BASE_DELAY_FOR_1X_SPEED / speedMultiplier;
+            } else {
+                // Fallback for an unlikely scenario of speedMultiplier being 0 or less
+                autoSortSpeed = BASE_DELAY_FOR_1X_SPEED; // Default to 1x speed delay
+            }
+        }
+
+
+        function autoSortNextVisualStep() {
+            if (!isAutoSorting || isAutoPaused) {
+                if (!isAutoSorting && autoSortBtn) autoSortBtn.textContent = '実行'; // If stopped completely
+                return;
+            }
+
+            const n = tempArrayForAutoSort.length;
+            if (n === 0) { // Should be caught earlier but good to have
+                bubble_displayAllSorted([]);
+                stopAndResetAutoSortUI(false);
+                return;
+            }
+
+
+            // Ensure current pass row is visible
+            if (autoSortOuterLoopPass < n - 1 && bubble_allRowsElements[autoSortOuterLoopPass] && !bubble_allRowsElements[autoSortOuterLoopPass].classList.contains('visible')) {
+                bubble_allRowsElements[autoSortOuterLoopPass].classList.add('visible');
+                // Initialize this row's display based on tempArrayForAutoSort
+                const initialStatesForRow = tempArrayForAutoSort.map((_, k) =>
+                    (k >= n - autoSortOuterLoopPass) ? 'state-sorted' : 'state-unsorted'
+                );
+                updateRowValuesAndStates(autoSortOuterLoopPass, tempArrayForAutoSort, initialStatesForRow);
+            }
+
+
+            // All passes complete
+            if (autoSortOuterLoopPass >= n - 1) {
+                bubble_displayAllSorted(tempArrayForAutoSort);
+                stopAndResetAutoSortUI(false);
+                bubble_currentArray = [...tempArrayForAutoSort]; // Sync manual state
+                bubble_currentPass = n - 1;
+                return;
+            }
+
+
+            // Current pass's comparisons
+            if (autoSortInnerLoopComparison < n - 1 - autoSortOuterLoopPass) {
+                const j = autoSortInnerLoopComparison;
+
+                // 1. Highlight elements to be compared
+                const comparisonStates = tempArrayForAutoSort.map((_, k) => {
+                    if (k === j || k === j + 1) return 'state-interactive-swap-source'; // Blue for comparison
+                    if (k >= n - autoSortOuterLoopPass) return 'state-sorted'; // Pink for already sorted
+                    return 'state-unsorted'; // Gray
+                });
+                updateRowValuesAndStates(autoSortOuterLoopPass, tempArrayForAutoSort, comparisonStates);
+                renderBarGraph(tempArrayForAutoSort, comparisonStates);
+
+                autoSortTimerId = setTimeout(() => {
+                    if (!isAutoSorting || isAutoPaused) return;
+
+                    // 2. Perform comparison and swap if needed
+                    let swapped = false;
+                    if (tempArrayForAutoSort[j] > tempArrayForAutoSort[j + 1]) {
+                        [tempArrayForAutoSort[j], tempArrayForAutoSort[j + 1]] = [tempArrayForAutoSort[j + 1], tempArrayForAutoSort[j]];
+                        swapped = true;
+                    }
+
+                    // 3. Show result of comparison/swap (highlight remains on j, j+1)
+                    updateRowValuesAndStates(autoSortOuterLoopPass, tempArrayForAutoSort, comparisonStates); // Values might have changed
+                    renderBarGraph(tempArrayForAutoSort, comparisonStates);
+
+                    autoSortTimerId = setTimeout(() => {
+                        if (!isAutoSorting || isAutoPaused) return;
+                        // 4. Clear comparison highlight (or prepare for next comparison)
+                        //    The elements j,j+1 go back to unsorted unless one is now sorted by this pass.
+                        //    This will be handled by the next iteration's highlight or end-of-pass update.
+                        autoSortInnerLoopComparison++;
+                        autoSortNextVisualStep();
+                    }, autoSortSpeed / (swapped ? 1.5 : 2.2)); // Slightly longer if swapped
+
+                }, autoSortSpeed / 1.8);
+
+            } else { // End of current pass (autoSortOuterLoopPass)
+                // Mark the element that just got sorted
+                const endOfPassStates = tempArrayForAutoSort.map((_, k) => {
+                    if (k >= n - 1 - autoSortOuterLoopPass) return 'state-sorted'; // All sorted elements so far
+                    return 'state-unsorted';
+                });
+                updateRowValuesAndStates(autoSortOuterLoopPass, tempArrayForAutoSort, endOfPassStates);
+                renderBarGraph(tempArrayForAutoSort, endOfPassStates);
+
+                if (bubble_allStatusTexts[autoSortOuterLoopPass]) {
+                    bubble_allStatusTexts[autoSortOuterLoopPass].textContent = 'OK';
+                    bubble_allStatusTexts[autoSortOuterLoopPass].className = 'status-text status-ok';
+                }
+                if (bubble_allExecuteButtons[autoSortOuterLoopPass]) { // Disable manual button for this pass
+                    bubble_allExecuteButtons[autoSortOuterLoopPass].disabled = true;
+                }
+
+
+                autoSortOuterLoopPass++;
+                autoSortInnerLoopComparison = 0;
+
+                // Prepare next pass row if it exists
+                if (autoSortOuterLoopPass < n - 1 && bubble_allRowsElements[autoSortOuterLoopPass]) {
+                    bubble_allRowsElements[autoSortOuterLoopPass].classList.add('visible');
+                    const nextPassInitialStates = tempArrayForAutoSort.map((_, k) =>
+                        (k >= n - autoSortOuterLoopPass) ? 'state-sorted' : 'state-unsorted'
+                    );
+                    updateRowValuesAndStates(autoSortOuterLoopPass, tempArrayForAutoSort, nextPassInitialStates);
+                }
+
+                autoSortTimerId = setTimeout(autoSortNextVisualStep, autoSortSpeed * 1.1); // Pause between passes
+            }
+        }
+
+        function updateRowValuesAndStates(passIdx, currentArrayValues, elementStates) {
+            if (passIdx < 0 || passIdx >= bubble_allNumberElementsInRows.length) return;
+            const rowSelects = bubble_allNumberElementsInRows[passIdx];
+            if (!rowSelects) return;
+
+            rowSelects.forEach((selectEl, colIndex) => {
+                const newValue = currentArrayValues[colIndex];
+                const newState = elementStates[colIndex] || 'state-unsorted';
+                const newSelect = bubble_createSelectElement(selectEl.id, newValue, bubble_allPossibleOptionsForSelect, newState, true); // Always disabled during auto-sort
+                if (selectEl.parentNode) {
+                    selectEl.parentNode.replaceChild(newSelect, selectEl);
+                }
+                rowSelects[colIndex] = newSelect;
+            });
+        }
+
+        function disableManualControls() {
+            bubble_allExecuteButtons.forEach(btn => { if (btn) btn.disabled = true; });
+            // If initial array elements were editable (they are not in this version), disable them too.
+        }
+
+
+        // --- bubble_initializeSortProcess ---
+        function bubble_initializeSortProcess(isCalledForAutoSortStart = false) {
+            if (!isCalledForAutoSortStart) { // If not starting auto-sort, ensure any running auto-sort is stopped
+                stopAndResetAutoSortUI(false); // Stop auto sort, reset its UI, but don't re-init bubble sort from here
+            }
+
+            bubble_initialArray = [...sharedInitialArray];
+            bubble_initialArray = bubble_initialArray.map(item => {
+                const num = Number(item);
+                return isNaN(num) ? 0 : num;
+            });
+            bubble_currentArray = [...bubble_initialArray]; // For manual steps
+            bubble_currentPass = 0; // For manual steps
+
+            bubble_generateRows(); // Generates the row structure
+
+            const numElements = bubble_currentArray.length;
+            if (numElements > 0) {
+                if (!isCalledForAutoSortStart) { // Only prepare manual UI if not initiating an auto-sort
+                    if (numElements > 1) {
+                        bubble_prepareStepUI(0, bubble_currentArray);
+                    } else {
+                        bubble_displayAllSorted(bubble_currentArray);
+                    }
+                } else {
+                    // For auto-sort start, the initial state is handled by startAutoSort itself
+                    // Here, just ensure the bar graph is set correctly.
+                    renderBarGraph(bubble_currentArray, bubble_currentArray.map(() => 'state-initial'));
+                }
+            } else {
+                renderBarGraph([], []); // For empty array
+            }
+            if (!isCalledForAutoSortStart) { // Render initial bar graph for manual mode or general reset
+                renderBarGraph(bubble_currentArray, bubble_currentArray.map(() => 'state-initial'));
+            }
+        }
+
+
+        // --- Global Initialization ---
+        function initializeAll() {
+            //sharedInitialArray = [5, 2, 3, 1, 4];
+            sharedInitialArray = [5, 2, 8, 1, 4, 7, 3, 6];
+            //sharedInitialArray = [3, 1, 2];
+            //sharedInitialArray = [1];
+            //sharedInitialArray = [];
+
+
+            // Setup control event listeners
+            autoSortBtn.addEventListener('click', handleAutoSortClick);
+            resetBtn.addEventListener('click', handleResetClick);
+            speedSlider.addEventListener('input', handleSpeedChange);
+
+            handleSpeedChange(); // Initialize speed from slider default
+            bubble_initializeSortProcess(); // Initialize sort display
+        }
+
+        document.addEventListener('DOMContentLoaded', initializeAll);
+    </script>
+
+</body>
+
+</html>

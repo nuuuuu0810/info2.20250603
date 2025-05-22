@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>バブルソート 選択</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* --- スタイル 1: Flexboxレイアウト (挿入ソートのものをベース) --- */
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        #main {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .left-pane {
+            width: 55%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #FFFFFF;
+            overflow-y: auto;
+        }
+
+        .left-pane h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .left-pane p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .right-pane {
+            width: 45%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #FFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            /* 棒グラフとソートモジュール間のスペースを調整 */
+            overflow-y: auto;
+            height: 100%;
+        }
+
+        .sort-module-wrapper {
+            width: 100%;
+            max-width: 750px;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 95vw;
+            /* 挿入ソートのコードに合わせる */
+            padding-left: 30px;
+            /* 挿入ソートのコードに合わせる */
+        }
+
+
+        .pane-title {
+            font-size: 1.6em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            text-align: center;
+            width: 100%;
+        }
+
+
+        /* --- バブルソート 手動ステップ (挿入ソートのものをベースに調整) --- */
+        #bubble_main-app-container {
+            /* ID変更 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 0;
+            margin-top: 20px;
+        }
+
+        #bubble_sort-container {
+            /* ID変更 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+            margin-right: auto;
+            /* 挿入ソートのスタイルを維持 */
+        }
+
+        .step-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0;
+            justify-content: flex-start;
+            min-height: 45px;
+            opacity: 1;
+            visibility: visible;
+            height: auto;
+            transition: opacity 0.5s ease-in-out, visibility 0s linear 0s, height 0.5s ease-in-out, margin-bottom 0.5s ease-in-out;
+            position: relative;
+            box-sizing: border-box;
+            padding: 0;
+            width: 100%;
+        }
+
+        .step-row:not(.visible) {
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+            visibility: hidden;
+            pointer-events: none;
+            margin-bottom: 0;
+            transition: opacity 0.3s ease-out, height 0.3s ease-out, margin-bottom 0.3s ease-out, visibility 0s linear 0.3s;
+        }
+
+        .step-row.visible {
+            opacity: 1;
+            height: auto;
+            margin-bottom: 4px;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .initial-array-row.visible {
+            margin-bottom: 8px;
+        }
+
+        .number-squares {
+            display: flex;
+            gap: 6px;
+            margin-right: 10px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .number-element {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            cursor: default;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            text-align: center;
+            text-align-last: center;
+        }
+
+        .number-element option {
+            background-color: white;
+            color: black;
+        }
+
+        /* バブルソートの state-interactive-swap-target は使用しない */
+        /*
+        .number-element.state-interactive-swap-target,
+        .bar_item.state-interactive-swap-target {
+            background-color: #ff4136;
+            border-color: #dc2a23;
+        }
+        .number-element.state-interactive-swap-target {
+            cursor: pointer;
+        }
+        */
+
+        .number-element.state-interactive-swap-source,
+        /* バブルソートの操作対象 (水色) */
+        .bar_item.state-interactive-swap-source {
+                background-color: #8CE3FE;
+    border-color: #7bc8e2;
+        }
+
+        .number-element.state-interactive-swap-source {
+            cursor: pointer;
+            /* バブルソートのサンプルから */
+        }
+
+
+        .number-element.state-sorted,
+        /* ソート済み (薄い青) */
+        .bar_item.state-sorted {
+
+            background-color: #FFC0CB;
+            border-color: #FFB6C1;
+        }
+
+        .number-element.state-unsorted,
+        /* 未ソート (灰色) */
+        .bar_item.state-unsorted {
+            background-color: #cccccc;
+            /* バブルソートのサンプルから */
+            border-color: #b3b3b3;
+            /* バブルソートのサンプルから */
+        }
+
+        .number-element.state-unsorted:disabled {
+            background-color: #cccccc;
+            /* バブルソートのサンプルから */
+            border-color: #b3b3b3;
+            /* バブルソートのサンプルから */
+        }
+
+        .number-element.state-final-orange,
+        /* 最終ソート済み (オレンジ) */
+        .bar_item.state-final-orange,
+        .number-element.state-initial,
+        /* 初期状態も同じオレンジ色 */
+        .bar_item.state-initial {
+            /* 初期状態も同じオレンジ色 */
+            background-color: #FFC107;
+            /* 挿入ソートのコード or バブルソートのサンプルから */
+            border-color: #FFA000;
+            /* 挿入ソートのコード or バブルソートのサンプルから */
+            color: black;
+            font-weight: bold;
+        }
+
+
+        .number-element:disabled {
+            opacity: 1;
+            cursor: default;
+        }
+
+        .number-element:disabled::-ms-expand {
+            display: none;
+        }
+
+        .execute-btn {
+            background-color: #212121;
+            color: white;
+            border: 1px solid #000;
+            width: 38px;
+            height: 38px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            transition: background-color 0.2s ease;
+            padding: 0;
+            flex-shrink: 0;
+            cursor: pointer;
+            margin-right: 12px;
+        }
+
+        .execute-btn svg {
+            fill: white;
+            width: 16px;
+            height: 16px;
+            display: block;
+        }
+
+        .execute-btn:disabled {
+            background-color: #666666;
+            border-color: #555555;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .execute-btn:disabled svg {
+            fill: #cccccc;
+        }
+
+        .status-text {
+            font-size: 1.0em;
+            font-weight: bold;
+            min-width: 60px;
+            text-align: left;
+            line-height: 40px;
+            flex-shrink: 0;
+        }
+
+        .status-ok {
+            color: #2ecc40;
+        }
+
+        .status-error {
+            color: #ff4136;
+        }
+
+        .status-complete {
+            color: #2ecc40;
+        }
+
+
+        .empty-array-message {
+            padding: 10px;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #555;
+            width: 100%;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 480px) {
+            .number-squares {
+                gap: 4px;
+                margin-right: 8px;
+            }
+
+            .number-element {
+                width: 32px;
+                height: 32px;
+                font-size: 1em;
+            }
+
+            .execute-btn {
+                width: 32px;
+                height: 32px;
+                margin-right: 8px;
+            }
+
+            .execute-btn svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            .status-text {
+                font-size: 1em;
+                min-width: 50px;
+                line-height: 32px;
+            }
+        }
+
+
+        /* --- 同期棒グラフ表示 (挿入ソートのものをそのまま利用) --- */
+        #sync_bar_graph_container {
+            display: flex;
+            width: 100%;
+            min-height: 200px;
+            padding: 10px 0;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+
+        #bar_items_wrapper {
+            display: flex;
+            gap: 5px;
+            align-items: flex-end;
+            position: relative;
+        }
+
+        .bar_item {
+            width: 40px;
+            text-align: center;
+            border: 1px solid #d0d0d0;
+            background-color: #f0f0f0;
+            font-weight: bold;
+            font-size: 1em;
+            color: #FFFFFF;
+            box-sizing: border-box;
+            position: relative;
+            --value: 1;
+            height: calc(25px + (var(--value) * 15px));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background-color 0.3s ease, border-color 0.3s ease, height 0.3s ease;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="main">
+        <div class="left-pane">
+            <img src="bubble.png" alt="bubble" width="98%">
+        </div>
+        <div class="right-pane">
+            <div class="sort-module-wrapper">
+                <div id="sync_bar_graph_container">
+                    <div id="bar_items_wrapper">
+                        <!-- JavaScriptで棒グラフ要素を動的に生成 -->
+                    </div>
+                </div>
+                <div id="bubble_main-app-container"> <!-- ID変更 -->
+                    <div id="bubble_sort-container"> <!-- ID変更 -->
+                        <!-- JavaScript will populate this area -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Global Shared State ---
+        let sharedInitialArray = [];
+
+        // --- Script: Bubble Sort (Manual) ---
+        let bubble_initialArray = [];
+        let bubble_currentArray = [];
+        let bubble_currentPass = 0;
+        // let bubble_selectedCharType = 'numbers'; // 固定
+        let bubble_allPossibleOptionsForSelect = [];
+
+        const bubble_sortContainer = document.getElementById('bubble_sort-container'); // ID変更
+        let bubble_allRowsElements = [];
+        let bubble_allNumberElementsInRows = [];
+        let bubble_allExecuteButtons = [];
+        let bubble_allStatusTexts = [];
+
+        // --- Bar Graph Sync Logic (挿入ソートのものをそのまま利用) ---
+        const barGraphItemsWrapper = document.getElementById('bar_items_wrapper');
+
+        function renderBarGraph(arr, elementStates = []) {
+            if (barGraphItemsWrapper.children.length !== arr.length && arr.length > 0) { // arr.length > 0 を追加
+                barGraphItemsWrapper.innerHTML = '';
+                arr.forEach((value, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'bar_item';
+                    item.id = `bar_item-${index}`;
+                    barGraphItemsWrapper.appendChild(item);
+                });
+            } else if (arr.length === 0) { // 配列が空ならバーも空にする
+                barGraphItemsWrapper.innerHTML = '';
+            }
+
+
+            arr.forEach((value, index) => {
+                const item = document.getElementById(`bar_item-${index}`);
+                if (!item) {
+                    // console.error(`Element bar_item-${index} not found!`); // 要素がない場合はスキップ
+                    return;
+                }
+                item.textContent = value;
+                item.style.setProperty('--value', value);
+
+                const classesToRemove = [];
+                for (const cls of item.classList) {
+                    if (cls.startsWith('state-')) {
+                        classesToRemove.push(cls);
+                    }
+                }
+                if (classesToRemove.length > 0) {
+                    item.classList.remove(...classesToRemove);
+                }
+                if (elementStates && elementStates[index]) {
+                    item.classList.add(elementStates[index]);
+                } else if (arr.length > 0) {
+                    item.classList.add('state-unsorted');
+                }
+            });
+        }
+
+        // --- bubble_createSelectElement (挿入ソートのものをベースに調整) ---
+        function bubble_createSelectElement(id, value, optionsArray, stateClasses, isDisabled) {
+            const select = document.createElement('select');
+            select.id = id;
+            select.className = `number-element ${stateClasses}`;
+            select.disabled = isDisabled;
+            const stringValueToSelect = String(value);
+
+            const uniqueStringOptions = [...new Set(optionsArray.map(String))];
+            const sortedOptions = uniqueStringOptions.sort((a, b) => Number(a) - Number(b)); // 数字としてソート
+
+            if (value !== undefined && value !== null && value !== '' && !sortedOptions.includes(stringValueToSelect)) {
+                sortedOptions.push(stringValueToSelect);
+                sortedOptions.sort((a, b) => Number(a) - Number(b));
+            }
+
+            sortedOptions.forEach(optVal => {
+                const option = document.createElement('option');
+                option.value = String(optVal);
+                option.textContent = String(optVal);
+                select.appendChild(option);
+            });
+
+            select.value = stringValueToSelect;
+            if (select.value !== stringValueToSelect && select.options.length > 0) {
+                for (let i = 0; i < select.options.length; i++) {
+                    if (select.options[i].textContent === stringValueToSelect) {
+                        select.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            if (select.options.length === 0 && (value !== undefined && value !== null && value !== '')) {
+                const option = document.createElement('option');
+                option.value = stringValueToSelect;
+                option.textContent = stringValueToSelect;
+                select.appendChild(option);
+                select.value = stringValueToSelect;
+            }
+            return select;
+        }
+
+        // --- bubble_generateRows (挿入ソートのものをベースにバブルソート用に調整) ---
+        function bubble_generateRows() {
+            bubble_sortContainer.innerHTML = '';
+            bubble_allRowsElements = [];
+            bubble_allNumberElementsInRows = [];
+            bubble_allExecuteButtons = [];
+            bubble_allStatusTexts = [];
+            const numElements = bubble_currentArray.length;
+
+            bubble_allPossibleOptionsForSelect = [];
+            // Options from 1 up to max value in array, or at least 1 to 10
+            const maxValInArray = numElements > 0 ? Math.max(...bubble_currentArray) : 0;
+            for (let k = 1; k <= Math.max(10, maxValInArray); k++) {
+                bubble_allPossibleOptionsForSelect.push(String(k));
+            }
+
+
+            if (numElements > 0) {
+                const initialDisplayRowDiv = document.createElement('div');
+                initialDisplayRowDiv.className = 'step-row visible initial-array-row';
+                const initialSquaresDiv = document.createElement('div');
+                initialSquaresDiv.className = 'number-squares';
+                bubble_initialArray.forEach((val, index) => {
+                    const selectEl = bubble_createSelectElement(`initial-el-${index}`, val, [val], 'state-initial', true);
+                    initialSquaresDiv.appendChild(selectEl);
+                });
+                initialDisplayRowDiv.appendChild(initialSquaresDiv);
+                bubble_sortContainer.appendChild(initialDisplayRowDiv);
+            } else {
+                const emptyMsgDiv = document.createElement('div');
+                emptyMsgDiv.className = 'empty-array-message';
+                emptyMsgDiv.textContent = "ソート対象のデータがありません。";
+                bubble_sortContainer.appendChild(emptyMsgDiv);
+                renderBarGraph([], []);
+                return;
+            }
+            renderBarGraph(bubble_currentArray, bubble_currentArray.map(() => 'state-initial'));
+
+            // Bubble sort has numElements - 1 passes. We create numElements rows for consistency,
+            // where the last row is for "complete" status.
+            for (let i = 0; i < numElements; i++) {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'step-row';
+                rowDiv.id = `bubble-step-row-${i}`;
+                const squaresDiv = document.createElement('div');
+                squaresDiv.className = 'number-squares';
+                const currentNumberElementsForRow = [];
+                for (let j = 0; j < numElements; j++) {
+                    const selectEl = bubble_createSelectElement(`bubble-el-${i}-${j}`, '', bubble_allPossibleOptionsForSelect, 'state-unsorted', true);
+                    squaresDiv.appendChild(selectEl);
+                    currentNumberElementsForRow.push(selectEl);
+                }
+                bubble_allNumberElementsInRows.push(currentNumberElementsForRow);
+                rowDiv.appendChild(squaresDiv);
+
+                if (i < numElements - 1) { // Passes are 0 to numElements - 2
+                    const button = document.createElement('button');
+                    button.className = 'execute-btn';
+                    button.dataset.passIndex = i;
+                    button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>';
+                    button.disabled = true;
+                    button.addEventListener('click', bubble_handleExecute);
+                    bubble_allExecuteButtons[i] = button;
+                    rowDiv.appendChild(button);
+                }
+
+                const statusSpan = document.createElement('span');
+                statusSpan.className = 'status-text';
+                statusSpan.id = `bubble-status-${i}`;
+                bubble_allStatusTexts[i] = statusSpan;
+                rowDiv.appendChild(statusSpan);
+                bubble_sortContainer.appendChild(rowDiv);
+                bubble_allRowsElements.push(rowDiv);
+            }
+        }
+
+        // --- bubble_prepareStepUI (バブルソートのロジックに合わせて変更) ---
+        function bubble_prepareStepUI(passIdx, arrayToDisplay) {
+            const numElements = arrayToDisplay.length;
+            // Bubble sort has numElements - 1 passes. passIdx goes from 0 to numElements - 2.
+            if (passIdx >= numElements - 1 || passIdx < 0) return;
+
+            const currentRowElement = bubble_allRowsElements[passIdx];
+            currentRowElement.classList.add('visible');
+            const currentSelectsInRow = bubble_allNumberElementsInRows[passIdx];
+            const optionsForThisStep = bubble_allPossibleOptionsForSelect;
+
+            const currentElementStatesForBarGraph = [];
+            const interactiveUpperBound = numElements - 1 - passIdx - 1; // Elements from 0 to this index are part of the current pass's comparisons.
+
+            currentSelectsInRow.forEach((selectEl, colIndex) => {
+                let valueToDisplay = arrayToDisplay[colIndex];
+                let isDisabled = true;
+                let stateClasses = '';
+
+                // Elements that are part of the current bubbling process (not yet sorted to the end)
+                // In pass `passIdx`, elements from index 0 to `numElements - 1 - passIdx -1` are actively compared.
+                // The largest among these will bubble to `numElements - 1 - passIdx`.
+                // So, elements from 0 to `numElements - 1 - passIdx` are "interactive" or "targets of interaction".
+                if (colIndex <= numElements - 1 - passIdx) {
+                    isDisabled = false;
+                    // These are the elements the user needs to arrange correctly for this pass.
+                    stateClasses = 'state-interactive-swap-source'; // Use blue for elements to be arranged
+                } else { // Elements already sorted and fixed at the end of the array
+                    stateClasses = 'state-sorted';
+                }
+                currentElementStatesForBarGraph[colIndex] = stateClasses;
+
+                const newSelectEl = bubble_createSelectElement(selectEl.id, valueToDisplay, optionsForThisStep, stateClasses, isDisabled);
+                selectEl.parentNode.replaceChild(newSelectEl, selectEl);
+                currentSelectsInRow[colIndex] = newSelectEl;
+            });
+
+            if (bubble_allExecuteButtons[passIdx]) {
+                bubble_allExecuteButtons[passIdx].disabled = false;
+            }
+            if (bubble_allStatusTexts[passIdx]) {
+                bubble_allStatusTexts[passIdx].textContent = '';
+                bubble_allStatusTexts[passIdx].className = 'status-text';
+            }
+            renderBarGraph(arrayToDisplay, currentElementStatesForBarGraph);
+        }
+
+        // --- bubble_displayAllSorted (挿入ソートのものをベースに調整) ---
+        function bubble_displayAllSorted(sortedArray) {
+            const numElements = sortedArray.length;
+            if (numElements === 0) {
+                bubble_sortContainer.innerHTML = '<div class="empty-array-message">ソート完了 (空の配列)</div>';
+                renderBarGraph([], []);
+                return;
+            }
+
+            const finalDisplayRowIdx = Math.max(0, numElements - 1);
+
+            if (bubble_allRowsElements[finalDisplayRowIdx]) {
+                bubble_allRowsElements[finalDisplayRowIdx].classList.add('visible');
+                const selectsInFinalRow = bubble_allNumberElementsInRows[finalDisplayRowIdx];
+                if (selectsInFinalRow) {
+                    selectsInFinalRow.forEach((select, colIndex) => {
+                        const finalValue = sortedArray[colIndex];
+                        const newSelectEl = bubble_createSelectElement(select.id, finalValue, [finalValue], 'state-final-orange', true);
+                        if (select.parentNode) {
+                            select.parentNode.replaceChild(newSelectEl, select);
+                        }
+                    });
+                }
+                if (bubble_allStatusTexts[finalDisplayRowIdx]) {
+                    bubble_allStatusTexts[finalDisplayRowIdx].textContent = '完了';
+                    bubble_allStatusTexts[finalDisplayRowIdx].className = 'status-text status-complete';
+                }
+                if (bubble_allExecuteButtons[finalDisplayRowIdx]) { // Should not exist for last row
+                    bubble_allExecuteButtons[finalDisplayRowIdx].style.display = 'none';
+                }
+            }
+            // Handle case for numElements = 1 specifically if the above doesn't cover it
+            else if (numElements === 1 && bubble_sortContainer.children.length > 0) {
+                const initialRowSquares = bubble_sortContainer.querySelector('.initial-array-row .number-squares');
+                if (initialRowSquares && initialRowSquares.firstChild) {
+                    const selectEl = initialRowSquares.firstChild;
+                    const newSelectEl = bubble_createSelectElement(
+                        selectEl.id, sortedArray[0], [sortedArray[0]], 'state-final-orange', true
+                    );
+                    selectEl.parentNode.replaceChild(newSelectEl, selectEl);
+                }
+                // Add a complete message if no dedicated status row for single element array
+                if (!bubble_allStatusTexts[0] && bubble_sortContainer.querySelector('.status-text') == null) {
+                    const completeMsgDiv = document.createElement('div');
+                    completeMsgDiv.className = 'status-text status-complete';
+                    completeMsgDiv.textContent = '完了';
+                    completeMsgDiv.style.textAlign = 'center';
+                    completeMsgDiv.style.width = '100%';
+                    bubble_sortContainer.appendChild(completeMsgDiv);
+                }
+            }
+            renderBarGraph(sortedArray, sortedArray.map(() => 'state-final-orange'));
+        }
+
+        // --- bubble_handleExecute (バブルソートのロジックに合わせて変更) ---
+        function bubble_handleExecute(event) {
+            const button = event.currentTarget;
+            const passIdxOfButton = parseInt(button.dataset.passIndex);
+            if (passIdxOfButton !== bubble_currentPass) return;
+
+            const numElements = bubble_currentArray.length;
+            const currentStatusText = bubble_allStatusTexts[bubble_currentPass];
+            const userSelectedRowState = [];
+            const selectsInCurrentRow = bubble_allNumberElementsInRows[bubble_currentPass];
+
+            selectsInCurrentRow.forEach(selectEl => {
+                userSelectedRowState.push(Number(selectEl.value));
+            });
+
+            let tempArrayForCalculation = [...bubble_currentArray];
+            // Perform one pass of bubble sort
+            for (let j = 0; j < numElements - 1 - bubble_currentPass; j++) {
+                if (tempArrayForCalculation[j] > tempArrayForCalculation[j + 1]) {
+                    [tempArrayForCalculation[j], tempArrayForCalculation[j + 1]] = [tempArrayForCalculation[j + 1], tempArrayForCalculation[j]];
+                }
+            }
+            const expectedRowStateAfterBubblePass = tempArrayForCalculation;
+
+            let isUserSetupCorrect = true;
+            for (let i = 0; i < numElements; i++) {
+                if (userSelectedRowState[i] !== expectedRowStateAfterBubblePass[i]) {
+                    isUserSetupCorrect = false;
+                    break;
+                }
+            }
+
+            const elementStatesForBarGraph = [];
+
+            if (isUserSetupCorrect) {
+                currentStatusText.textContent = 'OK';
+                currentStatusText.className = 'status-text status-ok';
+                button.disabled = true;
+                bubble_currentArray = [...expectedRowStateAfterBubblePass];
+
+                const fixedIndexBoundary = numElements - 1 - bubble_currentPass; // Element at this index is now sorted
+
+                bubble_allNumberElementsInRows[bubble_currentPass].forEach((sel, idx) => {
+                    const finalValueInCell = bubble_currentArray[idx];
+                    let cellStateClass = '';
+                    if (idx >= fixedIndexBoundary) { // Corrected logic: elements from fixedIndexBoundary onwards are sorted
+                        cellStateClass = 'state-sorted';
+                    } else {
+                        cellStateClass = 'state-unsorted'; // These will be part of next pass's interactive elements
+                    }
+                    elementStatesForBarGraph[idx] = cellStateClass;
+
+                    const newSelectEl = bubble_createSelectElement(sel.id, finalValueInCell, [finalValueInCell], cellStateClass, true);
+                    sel.parentNode.replaceChild(newSelectEl, sel);
+                });
+                renderBarGraph(bubble_currentArray, elementStatesForBarGraph);
+
+                bubble_currentPass++;
+                if (bubble_currentPass < numElements - 1) { // numElements - 1 passes total
+                    bubble_prepareStepUI(bubble_currentPass, bubble_currentArray);
+                } else {
+                    bubble_displayAllSorted(bubble_currentArray);
+                }
+            } else {
+                currentStatusText.textContent = 'エラー';
+                currentStatusText.className = 'status-text status-error';
+
+                const userAttemptStates = [];
+                bubble_allNumberElementsInRows[bubble_currentPass].forEach((sel, idx) => {
+                    const classList = sel.className.split(' ');
+                    let stateClassForBar = 'state-unsorted';
+                    for (const cls of classList) {
+                        if (cls.startsWith('state-')) {
+                            stateClassForBar = cls;
+                            break;
+                        }
+                    }
+                    userAttemptStates[idx] = stateClassForBar;
+                });
+                renderBarGraph(userSelectedRowState, userAttemptStates);
+            }
+        }
+
+        // --- bubble_initializeSortProcess (挿入ソートのものをベースに調整) ---
+        function bubble_initializeSortProcess() {
+            bubble_initialArray = [...sharedInitialArray];
+            // Ensure all items are numbers
+            bubble_initialArray = bubble_initialArray.map(item => {
+                const num = Number(item);
+                return isNaN(num) ? 0 : num;
+            });
+            bubble_currentArray = [...bubble_initialArray];
+            bubble_currentPass = 0;
+
+            bubble_generateRows();
+
+            const numElements = bubble_currentArray.length;
+            if (numElements > 1) {
+                bubble_prepareStepUI(0, bubble_currentArray); // Prepare for pass 0
+            } else { // 0 or 1 element is already sorted
+                bubble_displayAllSorted(bubble_currentArray);
+            }
+        }
+
+        // --- Global Initialization (挿入ソートのものをベース) ---
+        function initializeAll() {
+            // Fixed initial array (developer can change this)
+            // sharedInitialArray = [7, 2, 9, 1, 5];
+            sharedInitialArray = [4, 6, 3, 5, 2, 7, 1]; // 10 elements example
+
+            const leftPane = document.querySelector('.left-pane');
+            if (!leftPane.querySelector('h3')) {
+            }
+            bubble_initializeSortProcess();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeAll();
+        });
+    </script>
+
+</body>
+
+</html>

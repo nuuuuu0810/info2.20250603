@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>選択ソート 選択</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* --- スタイル 1: Flexboxレイアウト (挿入ソートのコードから流用) --- */
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        #main {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .left-pane {
+            width: 55%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #FFFFFF;
+            overflow-y: auto;
+        }
+
+        .left-pane h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .left-pane p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .left-pane ol {
+            text-align: left;
+            display: inline-block;
+            /* olを中央寄せするため */
+        }
+
+        .left-pane li {
+            margin-bottom: 8px;
+        }
+
+
+        .right-pane {
+            width: 45%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            overflow-y: auto;
+            height: 100%;
+        }
+
+        .sort-module-wrapper {
+            width: 100%;
+            max-width: 750px;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 95vw;
+            /* 挿入ソートのコードの指定を維持 */
+            padding-left: 30px;
+            /* 挿入ソートのコードの指定を維持 */
+        }
+
+
+        .pane-title {
+            /* これは挿入ソートのコードにあったが、今回は未使用 */
+            font-size: 1.6em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            text-align: center;
+            width: 100%;
+        }
+
+
+        /* --- 選択ソート 手動ステップ (挿入ソートのCSSをベースに変更) --- */
+        #selection_main-app-container {
+            /* ID変更 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 0;
+            margin-top: 20px;
+        }
+
+        #selection_sort-container {
+            /* ID変更 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+            margin-right: auto;
+        }
+
+        .step-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0;
+            justify-content: flex-start;
+            min-height: 45px;
+            opacity: 1;
+            visibility: visible;
+            height: auto;
+            transition: opacity 0.5s ease-in-out, visibility 0s linear 0s, height 0.5s ease-in-out, margin-bottom 0.5s ease-in-out;
+            position: relative;
+            box-sizing: border-box;
+            padding: 0;
+            width: 100%;
+        }
+
+        .step-row:not(.visible) {
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+            visibility: hidden;
+            pointer-events: none;
+            margin-bottom: 0;
+            transition: opacity 0.3s ease-out, height 0.3s ease-out, margin-bottom 0.3s ease-out, visibility 0s linear 0.3s;
+        }
+
+        .step-row.visible {
+            opacity: 1;
+            height: auto;
+            margin-bottom: 4px;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .initial-array-row.visible {
+            margin-bottom: 8px;
+        }
+
+        .number-squares {
+            display: flex;
+            gap: 6px;
+            margin-right: 10px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .number-element {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            cursor: default;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            text-align: center;
+            text-align-last: center;
+        }
+
+        .number-element option {
+            background-color: white;
+            color: black;
+        }
+
+        /* 色定義: 選択ソートのサンプルに合わせて調整 */
+        .number-element.state-interactive-swap-target,
+        /* パスの先頭、交換対象 */
+        .bar_item.state-interactive-swap-target {
+            background-color: #ff4136;
+            /* 赤 (選択ソートサンプルより) */
+            border-color: #dc2a23;
+        }
+
+        .number-element.state-interactive-swap-target {
+            cursor: pointer;
+        }
+
+
+        .number-element.state-interactive-swap-source,
+        /* 見つかった最小値 */
+        .bar_item.state-interactive-swap-source {
+            background-color: #8CE3FE;
+            /* 薄い青 (選択ソートサンプルより) */
+            border-color: #7bc8e2;
+            /* 選択ソートサンプルより */
+        }
+
+        .number-element.state-interactive-swap-source {
+            cursor: pointer;
+        }
+
+
+        .number-element.state-sorted,
+        /* ソート済み */
+        .bar_item.state-sorted {
+            background-color: #a9a9a9;
+            /* 灰色 (選択ソートサンプルより) */
+            border-color: #8c8c8c;
+            /* 選択ソートサンプルより */
+        }
+
+        .number-element.state-unsorted,
+        /* 未ソート（最小値探索対象）*/
+        .bar_item.state-unsorted {
+            background-color: #8CE3FE;
+            /* 薄い青 (選択ソートサンプルより) */
+            border-color: #7bc8e2;
+            /* 選択ソートサンプルより */
+        }
+
+        /* :disabled スタイルは挿入ソートのものを維持、主に state-sorted などで事実上適用される */
+        .number-element.state-unsorted:disabled {
+            background-color: #cccccc;
+            /* このケースは選択ソートでは少ないが、定義は残す */
+            border-color: #b3b3b3;
+        }
+
+
+        .number-element.state-final-orange,
+        .bar_item.state-final-orange,
+        .number-element.state-initial,
+        /* 初期状態も同じオレンジ色 */
+        .bar_item.state-initial {
+            /* 初期状態も同じオレンジ色 */
+            background-color: #FFC107;
+            border-color: #FFA000;
+            color: black;
+            font-weight: bold;
+        }
+
+
+        .number-element:disabled {
+            opacity: 1;
+            cursor: default;
+        }
+
+        .number-element:disabled::-ms-expand {
+            display: none;
+        }
+
+        .execute-btn {
+            background-color: #212121;
+            color: white;
+            border: 1px solid #000;
+            width: 38px;
+            height: 38px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            transition: background-color 0.2s ease;
+            padding: 0;
+            flex-shrink: 0;
+            cursor: pointer;
+            margin-right: 12px;
+        }
+
+        .execute-btn svg {
+            fill: white;
+            width: 16px;
+            height: 16px;
+            display: block;
+        }
+
+        .execute-btn:disabled {
+            background-color: #666666;
+            border-color: #555555;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .execute-btn:disabled svg {
+            fill: #cccccc;
+        }
+
+        .status-text {
+            font-size: 1.0em;
+            font-weight: bold;
+            min-width: 60px;
+            text-align: left;
+            line-height: 40px;
+            flex-shrink: 0;
+        }
+
+        .status-ok {
+            color: #2ecc40;
+        }
+
+        .status-error {
+            color: #ff4136;
+        }
+
+        .status-complete {
+            color: #2ecc40;
+        }
+
+        .empty-array-message {
+            padding: 10px;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #555;
+            width: 100%;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 480px) {
+            .number-squares {
+                gap: 4px;
+                margin-right: 8px;
+            }
+
+            .number-element {
+                width: 32px;
+                height: 32px;
+                font-size: 1em;
+            }
+
+            .execute-btn {
+                width: 32px;
+                height: 32px;
+                margin-right: 8px;
+            }
+
+            .execute-btn svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            .status-text {
+                font-size: 1em;
+                min-width: 50px;
+                line-height: 32px;
+            }
+        }
+
+        /* --- 同期棒グラフ表示 (挿入ソートのコードから流用) --- */
+        #sync_bar_graph_container {
+            display: flex;
+            width: 100%;
+            min-height: 200px;
+            padding: 10px 0;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+
+        #bar_items_wrapper {
+            display: flex;
+            gap: 5px;
+            align-items: flex-end;
+            position: relative;
+        }
+
+        .bar_item {
+            width: 40px;
+            text-align: center;
+            border: 1px solid #d0d0d0;
+            background-color: #f0f0f0;
+            font-weight: bold;
+            font-size: 1em;
+            color: #FFFFFF;
+            box-sizing: border-box;
+            position: relative;
+            --value: 1;
+            height: calc(25px + (var(--value) * 15px));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background-color 0.3s ease, border-color 0.3s ease, height 0.3s ease;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="main">
+        <div class="left-pane">
+            <img src="select.png" alt="select" width="98%">
+        </div>
+        <div class="right-pane">
+            <div class="sort-module-wrapper">
+                <div id="sync_bar_graph_container">
+                    <div id="bar_items_wrapper">
+                        <!-- JavaScriptで棒グラフ要素を動的に生成 -->
+                    </div>
+                </div>
+                <div id="selection_main-app-container"> <!-- ID変更 -->
+                    <div id="selection_sort-container"> <!-- ID変更 -->
+                        <!-- JavaScript will populate this area -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Global Shared State ---
+        let sharedInitialArray = [];
+
+        // --- Script: Selection Sort (Manual) ---
+        let selection_initialArray = [];
+        let selection_currentArray = [];
+        let selection_currentPass = 0;
+        // let selection_selectedCharType = 'numbers'; // 挿入ソートコードにあったが、現在は数値固定のため直接参照しない
+        let selection_allPossibleOptionsForSelect = [];
+
+        const selection_sortContainer = document.getElementById('selection_sort-container');
+        let selection_allRowsElements = [];
+        let selection_allNumberElementsInRows = [];
+        let selection_allExecuteButtons = [];
+        let selection_allStatusTexts = [];
+
+        // --- Bar Graph Sync Logic (挿入ソートのコードから流用) ---
+        const barGraphItemsWrapper = document.getElementById('bar_items_wrapper');
+
+        function renderBarGraph(arr, elementStates = []) {
+            if (barGraphItemsWrapper.children.length !== arr.length && arr.length > 0) {
+                barGraphItemsWrapper.innerHTML = '';
+                arr.forEach((value, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'bar_item';
+                    item.id = `bar_item-${index}`;
+                    barGraphItemsWrapper.appendChild(item);
+                });
+            } else if (arr.length === 0) {
+                barGraphItemsWrapper.innerHTML = '';
+            }
+
+
+            arr.forEach((value, index) => {
+                const item = document.getElementById(`bar_item-${index}`);
+                if (!item) {
+                    // console.error(`Element bar_item-${index} not found!`); // 初回生成時はまだないことがある
+                    return;
+                }
+                item.textContent = value;
+                item.style.setProperty('--value', value);
+
+                const classesToRemove = [];
+                for (const cls of item.classList) {
+                    if (cls.startsWith('state-')) {
+                        classesToRemove.push(cls);
+                    }
+                }
+                if (classesToRemove.length > 0) {
+                    item.classList.remove(...classesToRemove);
+                }
+                if (elementStates && elementStates[index]) {
+                    item.classList.add(elementStates[index]);
+                } else if (arr.length > 0) {
+                    item.classList.add('state-unsorted'); // Fallback
+                }
+            });
+        }
+
+        // createSelectElement (挿入ソートのコードから流用、optionsArrayのソートは数値前提)
+        function selection_createSelectElement(id, value, optionsArray, stateClasses, isDisabled) {
+            const select = document.createElement('select');
+            select.id = id;
+            select.className = `number-element ${stateClasses}`;
+            select.disabled = isDisabled;
+            const stringValueToSelect = String(value);
+
+            const uniqueStringOptions = [...new Set(optionsArray.map(String))];
+            // Ensure current value is in options if it's not there already
+            if (value !== undefined && value !== null && value !== '' && !uniqueStringOptions.includes(stringValueToSelect)) {
+                uniqueStringOptions.push(stringValueToSelect);
+            }
+            // Sort numerically
+            const sortedOptions = uniqueStringOptions.sort((a, b) => Number(a) - Number(b));
+
+
+            sortedOptions.forEach(optVal => {
+                const option = document.createElement('option');
+                option.value = String(optVal);
+                option.textContent = String(optVal);
+                select.appendChild(option);
+            });
+
+            select.value = stringValueToSelect;
+            if (select.value !== stringValueToSelect && select.options.length > 0) {
+                for (let i = 0; i < select.options.length; i++) {
+                    if (select.options[i].textContent === stringValueToSelect) {
+                        select.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            if (select.options.length === 0 && (value !== undefined && value !== null && value !== '')) {
+                const option = document.createElement('option');
+                option.value = stringValueToSelect;
+                option.textContent = stringValueToSelect;
+                select.appendChild(option);
+                select.value = stringValueToSelect;
+            }
+            return select;
+        }
+
+        function selection_generateRows() {
+            selection_sortContainer.innerHTML = '';
+            selection_allRowsElements = [];
+            selection_allNumberElementsInRows = [];
+            selection_allExecuteButtons = [];
+            selection_allStatusTexts = [];
+            const numElements = selection_currentArray.length;
+
+            // selection_allPossibleOptionsForSelect は initialize で設定済み
+
+            if (numElements > 0) {
+                const initialDisplayRowDiv = document.createElement('div');
+                initialDisplayRowDiv.className = 'step-row visible initial-array-row';
+                const initialSquaresDiv = document.createElement('div');
+                initialSquaresDiv.className = 'number-squares';
+                selection_initialArray.forEach((val, index) => {
+                    const selectEl = selection_createSelectElement(`initial-el-${index}`, val, [val], 'state-initial', true);
+                    initialSquaresDiv.appendChild(selectEl);
+                });
+                initialDisplayRowDiv.appendChild(initialSquaresDiv);
+                selection_sortContainer.appendChild(initialDisplayRowDiv);
+            } else {
+                const emptyMsgDiv = document.createElement('div');
+                emptyMsgDiv.className = 'empty-array-message';
+                emptyMsgDiv.textContent = "ソート対象のデータがありません。";
+                selection_sortContainer.appendChild(emptyMsgDiv);
+                renderBarGraph([], []);
+                return;
+            }
+            renderBarGraph(selection_currentArray, selection_currentArray.map(() => 'state-initial'));
+
+            // For selection sort, we need numElements - 1 passes, so numElements - 1 step rows.
+            // The last row will be for the final "complete" status.
+            const numPasses = numElements - 1;
+            for (let i = 0; i < numElements; i++) { // Create numElements rows, last one for "complete"
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'step-row';
+                rowDiv.id = `selection-step-row-${i}`;
+                const squaresDiv = document.createElement('div');
+                squaresDiv.className = 'number-squares';
+                const currentNumberElementsForRow = [];
+                for (let j = 0; j < numElements; j++) {
+                    // Options for non-disabled selects will be selection_allPossibleOptionsForSelect
+                    const selectEl = selection_createSelectElement(`selection-el-${i}-${j}`, '', selection_allPossibleOptionsForSelect, 'state-unsorted', true);
+                    squaresDiv.appendChild(selectEl);
+                    currentNumberElementsForRow.push(selectEl);
+                }
+                selection_allNumberElementsInRows.push(currentNumberElementsForRow);
+                rowDiv.appendChild(squaresDiv);
+
+                if (i < numPasses) { // Only add execute buttons for actual passes
+                    const button = document.createElement('button');
+                    button.className = 'execute-btn';
+                    button.dataset.passIndex = i;
+                    button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>';
+                    button.disabled = true;
+                    button.addEventListener('click', selection_handleExecute);
+                    selection_allExecuteButtons[i] = button;
+                    rowDiv.appendChild(button);
+                }
+
+                const statusSpan = document.createElement('span');
+                statusSpan.className = 'status-text';
+                statusSpan.id = `selection-status-${i}`;
+                selection_allStatusTexts[i] = statusSpan;
+                rowDiv.appendChild(statusSpan);
+                selection_sortContainer.appendChild(rowDiv);
+                selection_allRowsElements.push(rowDiv);
+            }
+        }
+
+        function selection_prepareStepUI(passIdx, arrayToDisplay) {
+            const numElements = arrayToDisplay.length;
+            if (passIdx >= numElements - 1 || passIdx < 0) return;
+
+            const currentRowElement = selection_allRowsElements[passIdx];
+            currentRowElement.classList.add('visible');
+            const currentSelectsInRow = selection_allNumberElementsInRows[passIdx];
+
+            // Find the index of the minimum element in the unsorted part of the array
+            let minVal = arrayToDisplay[passIdx];
+            let minValIdx = passIdx;
+            for (let k = passIdx + 1; k < numElements; k++) {
+                if (Number(arrayToDisplay[k]) < Number(minVal)) {
+                    minVal = arrayToDisplay[k];
+                    minValIdx = k;
+                }
+            }
+
+            const currentElementStatesForBarGraph = [];
+
+            currentSelectsInRow.forEach((selectEl, colIndex) => {
+                let valueToDisplay = arrayToDisplay[colIndex];
+                let isDisabled = true;
+                let stateClasses = '';
+                let optionsForSelect = [valueToDisplay]; // Default for disabled/sorted
+
+                if (colIndex < passIdx) { // Sorted part
+                    stateClasses = 'state-sorted';
+                } else { // Unsorted part (including the element at passIdx)
+                    isDisabled = false;
+                    optionsForSelect = selection_allPossibleOptionsForSelect;
+                    if (colIndex === passIdx) {
+                        stateClasses = 'state-interactive-swap-target'; // Element to be swapped
+                    } else if (colIndex === minValIdx) {
+                        stateClasses = 'state-interactive-swap-source'; // Minimum element found
+                    } else {
+                        stateClasses = 'state-unsorted'; // Other elements in unsorted part
+                    }
+                }
+                currentElementStatesForBarGraph[colIndex] = stateClasses;
+
+                const newSelectEl = selection_createSelectElement(selectEl.id, valueToDisplay, optionsForSelect, stateClasses, isDisabled);
+                selectEl.parentNode.replaceChild(newSelectEl, selectEl);
+                currentSelectsInRow[colIndex] = newSelectEl;
+            });
+
+            if (selection_allExecuteButtons[passIdx]) {
+                selection_allExecuteButtons[passIdx].disabled = false;
+            }
+            if (selection_allStatusTexts[passIdx]) {
+                selection_allStatusTexts[passIdx].textContent = '';
+                selection_allStatusTexts[passIdx].className = 'status-text';
+            }
+            renderBarGraph(arrayToDisplay, currentElementStatesForBarGraph);
+        }
+
+        function selection_displayAllSorted(sortedArray) {
+            const numElements = sortedArray.length;
+            if (numElements === 0) {
+                selection_sortContainer.innerHTML = '<div class="empty-array-message">ソート完了 (空の配列)</div>';
+                renderBarGraph([], []);
+                return;
+            }
+
+            const finalDisplayRowIdx = numElements - 1; // Last row is for completion message
+
+            if (selection_allRowsElements[finalDisplayRowIdx]) {
+                selection_allRowsElements[finalDisplayRowIdx].classList.add('visible');
+                const selectsInFinalRow = selection_allNumberElementsInRows[finalDisplayRowIdx];
+                if (selectsInFinalRow) {
+                    selectsInFinalRow.forEach((select, colIndex) => {
+                        const finalValue = sortedArray[colIndex];
+                        const newSelectEl = selection_createSelectElement(select.id, finalValue, [finalValue], 'state-final-orange', true);
+                        if (select.parentNode) {
+                            select.parentNode.replaceChild(newSelectEl, select);
+                        }
+                    });
+                }
+                if (selection_allStatusTexts[finalDisplayRowIdx]) {
+                    selection_allStatusTexts[finalDisplayRowIdx].textContent = '完了';
+                    selection_allStatusTexts[finalDisplayRowIdx].className = 'status-text status-complete';
+                }
+                // Hide execute button if it exists for the last row (should not, but defensive)
+                if (selection_allExecuteButtons[finalDisplayRowIdx]) {
+                    selection_allExecuteButtons[finalDisplayRowIdx].style.display = 'none';
+                }
+            } else if (numElements > 0 && selection_allRowsElements.length === numElements - 1) {
+                // This case handles if only N-1 rows were generated for passes.
+                // We might need an extra row for the "complete" message if not already generated.
+                // Current generateRows creates N rows, so this branch might not be hit.
+                console.warn("Final display row missing, might need adjustment in generateRows.");
+            }
+
+
+            renderBarGraph(sortedArray, sortedArray.map(() => 'state-final-orange'));
+        }
+
+        function selection_handleExecute(event) {
+            const button = event.currentTarget;
+            const passIdxOfButton = parseInt(button.dataset.passIndex);
+            if (passIdxOfButton !== selection_currentPass) return;
+
+            const numElements = selection_currentArray.length;
+            const currentStatusText = selection_allStatusTexts[selection_currentPass];
+            const userSelectedRowState = [];
+            const selectsInCurrentRow = selection_allNumberElementsInRows[selection_currentPass];
+
+            selectsInCurrentRow.forEach(selectEl => {
+                userSelectedRowState.push(Number(selectEl.value));
+            });
+
+            // Calculate the correct state after this pass's selection sort swap
+            let tempArrayForCalculation = [...selection_currentArray];
+            let minIdx = selection_currentPass;
+            for (let k = selection_currentPass + 1; k < numElements; k++) {
+                if (Number(tempArrayForCalculation[k]) < Number(tempArrayForCalculation[minIdx])) {
+                    minIdx = k;
+                }
+            }
+            // Swap the found minimum element with the first element of the unsorted part
+            if (minIdx !== selection_currentPass) {
+                [tempArrayForCalculation[selection_currentPass], tempArrayForCalculation[minIdx]] =
+                    [tempArrayForCalculation[minIdx], tempArrayForCalculation[selection_currentPass]];
+            }
+            const expectedRowStateAfterCorrectSwap = tempArrayForCalculation;
+
+            let isUserSetupCorrect = true;
+            for (let i = 0; i < numElements; i++) {
+                if (userSelectedRowState[i] !== expectedRowStateAfterCorrectSwap[i]) {
+                    isUserSetupCorrect = false;
+                    break;
+                }
+            }
+
+            const elementStatesForBarGraph = [];
+
+            if (isUserSetupCorrect) {
+                currentStatusText.textContent = 'OK';
+                currentStatusText.className = 'status-text status-ok';
+                button.disabled = true;
+                selection_currentArray = [...expectedRowStateAfterCorrectSwap];
+
+                selection_allNumberElementsInRows[selection_currentPass].forEach((sel, idx) => {
+                    const finalValueInCell = selection_currentArray[idx];
+                    // Elements up to and including currentPass are now sorted
+                    let cellStateClass = (idx <= selection_currentPass) ? 'state-sorted' : 'state-unsorted';
+                    elementStatesForBarGraph[idx] = cellStateClass;
+
+                    const newSelectEl = selection_createSelectElement(sel.id, finalValueInCell, [finalValueInCell], cellStateClass, true);
+                    sel.parentNode.replaceChild(newSelectEl, sel);
+                });
+                renderBarGraph(selection_currentArray, elementStatesForBarGraph);
+
+                selection_currentPass++;
+                if (selection_currentPass < numElements - 1) { // numElements-1 passes
+                    selection_prepareStepUI(selection_currentPass, selection_currentArray);
+                } else {
+                    selection_displayAllSorted(selection_currentArray);
+                }
+            } else {
+                currentStatusText.textContent = 'エラー';
+                currentStatusText.className = 'status-text status-error';
+
+                const userAttemptStates = [];
+                selection_allNumberElementsInRows[selection_currentPass].forEach((sel, idx) => {
+                    const classList = sel.className.split(' ');
+                    let stateClassForBar = 'state-unsorted';
+                    for (const cls of classList) {
+                        if (cls.startsWith('state-')) {
+                            stateClassForBar = cls;
+                            break;
+                        }
+                    }
+                    userAttemptStates[idx] = stateClassForBar;
+                });
+                renderBarGraph(userSelectedRowState, userAttemptStates);
+            }
+        }
+
+        function selection_initializeSortProcess() {
+            selection_initialArray = [...sharedInitialArray]; // Assumes sharedInitialArray has numbers
+            selection_currentArray = [...selection_initialArray];
+            selection_currentPass = 0;
+
+            // Generate options for select dropdowns from the initial array (unique, sorted numbers)
+            selection_allPossibleOptionsForSelect = [...new Set(selection_initialArray.map(String))].sort((a, b) => Number(a) - Number(b));
+
+
+            selection_generateRows();
+
+            const numElements = selection_currentArray.length;
+            if (numElements > 1) {
+                selection_prepareStepUI(0, selection_currentArray);
+            } else if (numElements === 1 || numElements === 0) {
+                selection_displayAllSorted(selection_currentArray);
+            }
+        }
+
+
+        // --- Global Initialization ---
+        function initializeAll() {
+            // Fixed initial array (developer can change this)
+            // sharedInitialArray = [7, 2, 9, 1, 5];
+            sharedInitialArray = [3, 4, 1, 5, 2]; // Example with 10 elements
+
+            const leftPane = document.querySelector('.left-pane');
+            if (!leftPane.querySelector('h3')) {
+            }
+            selection_initializeSortProcess();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeAll();
+        });
+    </script>
+
+</body>
+
+</html>

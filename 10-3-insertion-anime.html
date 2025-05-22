@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>挿入ソート 選択</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* --- スタイル 1: Flexboxレイアウト --- */
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        #main {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .left-pane {
+            width: 55%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #FFFFFF;
+            overflow-y: auto;
+        }
+
+        .left-pane h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .left-pane p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .right-pane {
+            width: 45%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #FFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            /* 棒グラフと挿入ソート間のスペースを調整 */
+            overflow-y: auto;
+            height: 100%;
+        }
+
+        .sort-module-wrapper {
+            width: 100%;
+            max-width: 750px;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-sizing: border-box;
+            display: flex;
+            /* これを追加して内部要素をflexで管理 */
+            flex-direction: column;
+            /* 内部要素を縦に並べる */
+            align-items: center;
+            /* 内部要素を中央揃え */
+            height: 95vw;
+            padding-left: 30px;
+        }
+
+
+        .pane-title {
+            font-size: 1.6em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            text-align: center;
+            width: 100%;
+        }
+
+
+        /* --- 挿入ソート 手動ステップ --- */
+        #insertion_main-app-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 0;
+            /* 上の棒グラフとのマージンは .right-pane の gap で調整 */
+            margin-top: 20px;
+
+        }
+
+        #insertion_sort-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+            margin-right: auto;
+        }
+
+        .step-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0;
+            justify-content: flex-start;
+            min-height: 45px;
+            opacity: 1;
+            visibility: visible;
+            height: auto;
+            transition: opacity 0.5s ease-in-out, visibility 0s linear 0s, height 0.5s ease-in-out, margin-bottom 0.5s ease-in-out;
+            position: relative;
+            box-sizing: border-box;
+            padding: 0;
+            width: 100%;
+        }
+
+        .step-row:not(.visible) {
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+            visibility: hidden;
+            pointer-events: none;
+            margin-bottom: 0;
+            transition: opacity 0.3s ease-out, height 0.3s ease-out, margin-bottom 0.3s ease-out, visibility 0s linear 0.3s;
+        }
+
+        .step-row.visible {
+            opacity: 1;
+            height: auto;
+            margin-bottom: 4px;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .initial-array-row.visible {
+            margin-bottom: 8px;
+        }
+
+        .number-squares {
+            display: flex;
+            gap: 6px;
+            margin-right: 10px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .number-element {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            cursor: default;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            text-align: center;
+            text-align-last: center;
+        }
+
+        .number-element option {
+            background-color: white;
+            color: black;
+        }
+
+        .number-element.state-interactive-swap-target,
+        .bar_item.state-interactive-swap-target {
+            background-color: #ff4136;
+            border-color: #dc2a23;
+        }
+
+        .number-element.state-interactive-swap-target {
+            cursor: pointer;
+        }
+
+
+        .number-element.state-interactive-swap-source,
+        .bar_item.state-interactive-swap-source {
+            background-color: #00bfff;
+            border-color: #00a0cc;
+        }
+
+        .number-element.state-interactive-swap-source {
+            cursor: pointer;
+        }
+
+
+        .number-element.state-sorted,
+        .bar_item.state-sorted {
+            background-color: #8CE3FE;
+            /* 薄い青 */
+            border-color: #7bc8e2;
+        }
+
+        .number-element.state-unsorted,
+        .bar_item.state-unsorted {
+            background-color: #cccccc;
+            border-color: #b3b3b3;
+        }
+
+        .number-element.state-unsorted:disabled {
+            background-color: #cccccc;
+            border-color: #b3b3b3;
+        }
+
+        .number-element.state-final-orange,
+        .bar_item.state-final-orange,
+        .number-element.state-initial,
+        /* 初期状態も同じオレンジ色 */
+        .bar_item.state-initial {
+            /* 初期状態も同じオレンジ色 */
+            background-color: #FFC107;
+            border-color: #FFA000;
+            color: black;
+            font-weight: bold;
+        }
+
+
+        .number-element:disabled {
+            opacity: 1;
+            cursor: default;
+        }
+
+        .number-element:disabled::-ms-expand {
+            display: none;
+        }
+
+        .execute-btn {
+            background-color: #212121;
+            color: white;
+            border: 1px solid #000;
+            width: 38px;
+            height: 38px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            transition: background-color 0.2s ease;
+            padding: 0;
+            flex-shrink: 0;
+            cursor: pointer;
+            margin-right: 12px;
+        }
+
+        .execute-btn svg {
+            fill: white;
+            width: 16px;
+            height: 16px;
+            display: block;
+        }
+
+        .execute-btn:disabled {
+            background-color: #666666;
+            border-color: #555555;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .execute-btn:disabled svg {
+            fill: #cccccc;
+        }
+
+        .status-text {
+            font-size: 1.0em;
+            font-weight: bold;
+            min-width: 60px;
+            text-align: left;
+            line-height: 40px;
+            flex-shrink: 0;
+        }
+
+        .status-ok {
+            color: #2ecc40;
+        }
+
+        .status-error {
+            color: #ff4136;
+        }
+
+        .status-complete {
+            color: #2ecc40;
+        }
+
+        /* .initial-array-row .number-element は state-initial でカバー */
+
+
+        .empty-array-message {
+            padding: 10px;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #555;
+            width: 100%;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 480px) {
+            .number-squares {
+                gap: 4px;
+                margin-right: 8px;
+            }
+
+            .number-element {
+                width: 32px;
+                height: 32px;
+                font-size: 1em;
+            }
+
+            .execute-btn {
+                width: 32px;
+                height: 32px;
+                margin-right: 8px;
+            }
+
+            .execute-btn svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            .status-text {
+                font-size: 1em;
+                min-width: 50px;
+                line-height: 32px;
+            }
+        }
+
+
+        /* --- 同期棒グラフ表示 --- */
+        #sync_bar_graph_container {
+            display: flex;
+            /*justify-content: center;*/
+            width: 100%;
+            min-height: 200px;
+            /* 高さを少し調整 */
+            padding: 10px 0;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+            /* 下の挿入ソートモジュールとの間隔 */
+            /*border-radius: 8px;
+            box-shadow: 0 2px 4px #d0d0d0;*/
+        }
+
+        #bar_items_wrapper {
+            display: flex;
+            gap: 5px;
+            align-items: flex-end;
+            position: relative;
+        }
+
+        .bar_item {
+            width: 40px;
+            text-align: center;
+            border: 1px solid #d0d0d0;
+            /* デフォルトの枠線 */
+            background-color: #f0f0f0;
+            /* デフォルトの背景色 */
+            font-weight: bold;
+            font-size: 1em;
+            color: #FFFFFF;
+            /* デフォルトの文字色 */
+            box-sizing: border-box;
+            position: relative;
+            --value: 1;
+            height: calc(25px + (var(--value) * 15px));
+            /* バーの高さ計算を調整 */
+            display: flex;
+            align-items: center;
+            /* 数字を中央に */
+            justify-content: center;
+            /* 数字を中央に */
+            flex-shrink: 0;
+            transition: background-color 0.3s ease, border-color 0.3s ease, height 0.3s ease;
+            /* 色と高さの変更をアニメーション */
+        }
+
+        /* 状態に応じた色のクラスは number-element と共通化 */
+    </style>
+</head>
+
+<body>
+    <div id="main">
+        <div class="left-pane">
+            <img src="insertion.png" alt="insertion" width="98%">
+        </div>
+        <div class="right-pane">
+            <div class="sort-module-wrapper"> <!-- このwrapperは1つ -->
+                <div id="sync_bar_graph_container">
+                    <div id="bar_items_wrapper">
+                        <!-- JavaScriptで棒グラフ要素を動的に生成 -->
+                    </div>
+                </div>
+                <div id="insertion_main-app-container">
+                    <div id="insertion_sort-container">
+                        <!-- JavaScript will populate this area -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Global Shared State ---
+        let sharedInitialArray = [];
+
+        // --- Script 1: Insertion Sort (Manual) ---
+        let insertion_initialArray = [];
+        let insertion_currentArray = [];
+        let insertion_currentPass = 0;
+        let insertion_selectedCharType = 'numbers'; // 今はnumbers固定だが残しておく
+        let insertion_allPossibleOptionsForSelect = [];
+
+        const insertion_sortContainer = document.getElementById('insertion_sort-container');
+        let insertion_allRowsElements = [];
+        let insertion_allNumberElementsInRows = [];
+        let insertion_allExecuteButtons = [];
+        let insertion_allStatusTexts = [];
+
+        // --- Bar Graph Sync Logic ---
+        const barGraphItemsWrapper = document.getElementById('bar_items_wrapper');
+
+        function renderBarGraph(arr, elementStates = []) {
+            // Ensure correct number of bars
+            if (barGraphItemsWrapper.children.length !== arr.length) {
+                barGraphItemsWrapper.innerHTML = ''; // Clear existing bars
+                arr.forEach((value, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'bar_item';
+                    item.id = `bar_item-${index}`;
+                    barGraphItemsWrapper.appendChild(item);
+                });
+            }
+
+            // Update bar values and styles
+            arr.forEach((value, index) => {
+                const item = document.getElementById(`bar_item-${index}`);
+                if (!item) {
+                    console.error(`Element bar_item-${index} not found!`);
+                    return;
+                }
+                item.textContent = value;
+                item.style.setProperty('--value', value);
+
+                // Reset all 'state-*' classes
+                const classesToRemove = [];
+                for (const cls of item.classList) {
+                    if (cls.startsWith('state-')) {
+                        classesToRemove.push(cls);
+                    }
+                }
+                if (classesToRemove.length > 0) {
+                    item.classList.remove(...classesToRemove);
+                }
+                // Add new state class if provided
+                if (elementStates && elementStates[index]) {
+                    item.classList.add(elementStates[index]);
+                } else if (arr.length > 0) { // Fallback for safety, though states should always be provided
+                    item.classList.add('state-unsorted');
+                }
+            });
+        }
+
+
+        function insertion_createSelectElement(id, value, optionsArray, stateClasses, isDisabled) {
+            const select = document.createElement('select');
+            select.id = id;
+            select.className = `number-element ${stateClasses}`;
+            select.disabled = isDisabled;
+            const stringValueToSelect = String(value);
+            // Ensure optionsArray contains unique stringified numbers and sort them numerically
+            const uniqueStringOptions = [...new Set(optionsArray.map(String))];
+            const sortedOptions = uniqueStringOptions.sort((a, b) => Number(a) - Number(b));
+
+            if (value !== undefined && value !== null && value !== '' && !sortedOptions.includes(stringValueToSelect)) {
+                sortedOptions.push(stringValueToSelect);
+                sortedOptions.sort((a, b) => Number(a) - Number(b));
+            }
+
+            sortedOptions.forEach(optVal => {
+                const option = document.createElement('option');
+                option.value = String(optVal);
+                option.textContent = String(optVal);
+                select.appendChild(option);
+            });
+
+            select.value = stringValueToSelect;
+            // Fallback if value doesn't exactly match an option's value but matches textContent
+            if (select.value !== stringValueToSelect && select.options.length > 0) {
+                for (let i = 0; i < select.options.length; i++) {
+                    if (select.options[i].textContent === stringValueToSelect) {
+                        select.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            // If no options were added but a value exists, add it as the sole option
+            if (select.options.length === 0 && (value !== undefined && value !== null && value !== '')) {
+                const option = document.createElement('option');
+                option.value = stringValueToSelect;
+                option.textContent = stringValueToSelect;
+                select.appendChild(option);
+                select.value = stringValueToSelect;
+            }
+            return select;
+        }
+
+        function insertion_generateRows() {
+            insertion_sortContainer.innerHTML = '';
+            insertion_allRowsElements = [];
+            insertion_allNumberElementsInRows = [];
+            insertion_allExecuteButtons = [];
+            insertion_allStatusTexts = [];
+            const numElements = insertion_currentArray.length;
+
+            insertion_allPossibleOptionsForSelect = [];
+            for (let k = 1; k <= Math.max(10, ...insertion_currentArray); k++) { // Options up to max value or 10
+                insertion_allPossibleOptionsForSelect.push(String(k));
+            }
+
+
+            if (numElements > 0) {
+                const initialDisplayRowDiv = document.createElement('div');
+                initialDisplayRowDiv.className = 'step-row visible initial-array-row';
+                const initialSquaresDiv = document.createElement('div');
+                initialSquaresDiv.className = 'number-squares';
+                insertion_initialArray.forEach((val, index) => {
+                    // 初期表示のselectは state-initial を使用
+                    const selectEl = insertion_createSelectElement(`initial-el-${index}`, val, [val], 'state-initial', true);
+                    initialSquaresDiv.appendChild(selectEl);
+                });
+                initialDisplayRowDiv.appendChild(initialSquaresDiv);
+                insertion_sortContainer.appendChild(initialDisplayRowDiv);
+            } else {
+                const emptyMsgDiv = document.createElement('div');
+                emptyMsgDiv.className = 'empty-array-message';
+                emptyMsgDiv.textContent = "ソート対象のデータがありません。";
+                insertion_sortContainer.appendChild(emptyMsgDiv);
+                renderBarGraph([], []); // Clear bar graph if no data
+                return;
+            }
+            // Initial bar graph render with state-initial for all elements
+            renderBarGraph(insertion_currentArray, insertion_currentArray.map(() => 'state-initial'));
+
+            for (let i = 0; i < numElements; i++) {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'step-row';
+                rowDiv.id = `insertion-step-row-${i}`;
+                const squaresDiv = document.createElement('div');
+                squaresDiv.className = 'number-squares';
+                const currentNumberElementsForRow = [];
+                for (let j = 0; j < numElements; j++) {
+                    const selectEl = insertion_createSelectElement(`insertion-el-${i}-${j}`, '', insertion_allPossibleOptionsForSelect, 'state-unsorted', true);
+                    squaresDiv.appendChild(selectEl);
+                    currentNumberElementsForRow.push(selectEl);
+                }
+                insertion_allNumberElementsInRows.push(currentNumberElementsForRow);
+                rowDiv.appendChild(squaresDiv);
+
+                if (i < numElements - 1) { // Last row doesn't need an execute button
+                    const button = document.createElement('button');
+                    button.className = 'execute-btn';
+                    button.dataset.passIndex = i;
+                    button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>';
+                    button.disabled = true;
+                    button.addEventListener('click', insertion_handleExecute);
+                    insertion_allExecuteButtons[i] = button;
+                    rowDiv.appendChild(button);
+                }
+
+                const statusSpan = document.createElement('span');
+                statusSpan.className = 'status-text';
+                statusSpan.id = `insertion-status-${i}`;
+                insertion_allStatusTexts[i] = statusSpan;
+                rowDiv.appendChild(statusSpan);
+                insertion_sortContainer.appendChild(rowDiv);
+                insertion_allRowsElements.push(rowDiv);
+            }
+        }
+
+        function insertion_prepareStepUI(passIdx, arrayToDisplay) {
+            const numElements = arrayToDisplay.length;
+            if (passIdx >= numElements - 1 || passIdx < 0) return; // numElements-1 は最終行なのでボタンなし
+
+            const currentRowElement = insertion_allRowsElements[passIdx];
+            currentRowElement.classList.add('visible');
+            const keyOriginalIndex = passIdx + 1; // The element to be inserted
+            const currentSelectsInRow = insertion_allNumberElementsInRows[passIdx];
+            const optionsForThisStep = insertion_allPossibleOptionsForSelect;
+
+            const currentElementStatesForBarGraph = [];
+
+            currentSelectsInRow.forEach((selectEl, colIndex) => {
+                let valueToDisplay = arrayToDisplay[colIndex];
+                let isDisabled = true;
+                let stateClasses = '';
+
+                if (colIndex <= passIdx) { // Sorted part (comparison targets)
+                    isDisabled = false;
+                    stateClasses = 'state-interactive-swap-target';
+                } else if (colIndex === keyOriginalIndex) { // Key element
+                    isDisabled = false;
+                    stateClasses = 'state-interactive-swap-source';
+                } else { // Unsorted part (right of the key)
+                    stateClasses = 'state-unsorted';
+                }
+                currentElementStatesForBarGraph[colIndex] = stateClasses;
+
+                const newSelectEl = insertion_createSelectElement(selectEl.id, valueToDisplay, optionsForThisStep, stateClasses, isDisabled);
+                selectEl.parentNode.replaceChild(newSelectEl, selectEl);
+                currentSelectsInRow[colIndex] = newSelectEl;
+            });
+
+            if (insertion_allExecuteButtons[passIdx]) {
+                insertion_allExecuteButtons[passIdx].disabled = false;
+            }
+            if (insertion_allStatusTexts[passIdx]) {
+                insertion_allStatusTexts[passIdx].textContent = '';
+                insertion_allStatusTexts[passIdx].className = 'status-text';
+            }
+            renderBarGraph(arrayToDisplay, currentElementStatesForBarGraph);
+        }
+
+        function insertion_displayAllSorted(sortedArray) {
+            const numElements = sortedArray.length;
+            if (numElements === 0) {
+                insertion_sortContainer.innerHTML = '<div class="empty-array-message">ソート完了 (空の配列)</div>';
+                renderBarGraph([], []);
+                return;
+            }
+
+            // The last row in insertion_allRowsElements is for final display.
+            // Its index is numElements - 1 if we generate numElements rows.
+            // Or if we generate numElements-1 step rows, this might be a special final row.
+            // Current logic generates numElements rows, where last one is placeholder for 'complete'.
+            const finalDisplayRowIdx = numElements - 1;
+
+            if (insertion_allRowsElements[finalDisplayRowIdx]) {
+                insertion_allRowsElements[finalDisplayRowIdx].classList.add('visible');
+                const selectsInFinalRow = insertion_allNumberElementsInRows[finalDisplayRowIdx];
+                if (selectsInFinalRow) {
+                    selectsInFinalRow.forEach((select, colIndex) => {
+                        const finalValue = sortedArray[colIndex];
+                        // state-final-orange for final display
+                        const newSelectEl = insertion_createSelectElement(select.id, finalValue, [finalValue], 'state-final-orange', true);
+                        if (select.parentNode) {
+                            select.parentNode.replaceChild(newSelectEl, select);
+                        }
+                    });
+                }
+                if (insertion_allStatusTexts[finalDisplayRowIdx]) {
+                    insertion_allStatusTexts[finalDisplayRowIdx].textContent = '完了';
+                    insertion_allStatusTexts[finalDisplayRowIdx].className = 'status-text status-complete';
+                }
+                // Hide execute button if it exists for the last row (should not, but defensive)
+                if (insertion_allExecuteButtons[finalDisplayRowIdx]) {
+                    insertion_allExecuteButtons[finalDisplayRowIdx].style.display = 'none';
+                }
+            }
+            renderBarGraph(sortedArray, sortedArray.map(() => 'state-final-orange'));
+        }
+
+        function insertion_handleExecute(event) {
+            const button = event.currentTarget;
+            const passIdxOfButton = parseInt(button.dataset.passIndex);
+            if (passIdxOfButton !== insertion_currentPass) return;
+
+            const numElements = insertion_currentArray.length;
+            const currentStatusText = insertion_allStatusTexts[insertion_currentPass];
+            const userSelectedRowState = [];
+            const selectsInCurrentRow = insertion_allNumberElementsInRows[insertion_currentPass];
+
+            selectsInCurrentRow.forEach(selectEl => {
+                userSelectedRowState.push(Number(selectEl.value));
+            });
+
+            let tempArrayForCalculation = [...insertion_currentArray];
+            const keyToInsert = tempArrayForCalculation[insertion_currentPass + 1];
+            let j = insertion_currentPass;
+            while (j >= 0 && tempArrayForCalculation[j] > keyToInsert) {
+                tempArrayForCalculation[j + 1] = tempArrayForCalculation[j];
+                j--;
+            }
+            tempArrayForCalculation[j + 1] = keyToInsert;
+            const expectedRowStateAfterCorrectInsertion = tempArrayForCalculation;
+
+            let isUserSetupCorrect = true;
+            for (let i = 0; i < numElements; i++) {
+                if (userSelectedRowState[i] !== expectedRowStateAfterCorrectInsertion[i]) {
+                    isUserSetupCorrect = false;
+                    break;
+                }
+            }
+
+            const elementStatesForBarGraph = [];
+
+            if (isUserSetupCorrect) {
+                currentStatusText.textContent = 'OK';
+                currentStatusText.className = 'status-text status-ok';
+                button.disabled = true;
+                insertion_currentArray = [...expectedRowStateAfterCorrectInsertion];
+
+                const keyOriginalIndexForStyling = insertion_currentPass + 1; // Element that was just inserted
+                insertion_allNumberElementsInRows[insertion_currentPass].forEach((sel, idx) => {
+                    const finalValueInCell = insertion_currentArray[idx];
+                    // Elements up to and including the one just inserted are 'sorted'
+                    // Others are 'unsorted' (though in insertion sort, elements to the right might not be touched yet)
+                    let cellStateClass = (idx <= keyOriginalIndexForStyling) ? 'state-sorted' : 'state-unsorted';
+                    elementStatesForBarGraph[idx] = cellStateClass;
+
+                    const newSelectEl = insertion_createSelectElement(sel.id, finalValueInCell, [finalValueInCell], cellStateClass, true);
+                    sel.parentNode.replaceChild(newSelectEl, sel);
+                });
+                renderBarGraph(insertion_currentArray, elementStatesForBarGraph);
+
+                insertion_currentPass++;
+                if (insertion_currentPass < numElements - 1) { // numElements-1 because we have numElements-1 passes
+                    insertion_prepareStepUI(insertion_currentPass, insertion_currentArray);
+                } else {
+                    insertion_displayAllSorted(insertion_currentArray);
+                }
+            } else {
+                currentStatusText.textContent = 'エラー';
+                currentStatusText.className = 'status-text status-error';
+                // On error, show the user's incorrect attempt on the bar graph for immediate feedback
+                const userAttemptStates = [];
+                insertion_allNumberElementsInRows[insertion_currentPass].forEach((sel, idx) => {
+                    // Use the classes from the select elements directly
+                    const classList = sel.className.split(' ');
+                    let stateClassForBar = 'state-unsorted'; // Default
+                    for (const cls of classList) {
+                        if (cls.startsWith('state-')) {
+                            stateClassForBar = cls;
+                            break;
+                        }
+                    }
+                    userAttemptStates[idx] = stateClassForBar;
+                });
+                renderBarGraph(userSelectedRowState, userAttemptStates); // Show user's incorrect state on bar graph
+            }
+        }
+
+        function insertion_initializeSortProcess() {
+            // Initial array is now fixed in initializeAll
+            insertion_initialArray = [...sharedInitialArray];
+            insertion_selectedCharType = 'numbers'; // Keep for potential future use
+            // Ensure all items are numbers
+            insertion_initialArray = insertion_initialArray.map(item => {
+                const num = Number(item);
+                return isNaN(num) ? 0 : num; // Convert to number, default to 0 if NaN
+            });
+            insertion_currentArray = [...insertion_initialArray];
+            insertion_currentPass = 0;
+
+            insertion_generateRows();
+
+            const numElements = insertion_currentArray.length;
+            if (numElements > 1) {
+                // Prepare the UI for the first step (pass 0)
+                insertion_prepareStepUI(0, insertion_currentArray);
+            } else if (numElements === 1 || numElements === 0) {
+                // If 0 or 1 element, it's already sorted
+                insertion_displayAllSorted(insertion_currentArray);
+            }
+        }
+
+        // _shuffleArray is not used anymore if array is fixed
+        /*
+        function _shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+        */
+
+        // --- Global Initialization ---
+        function initializeAll() {
+            // Fixed initial array (developer can change this)
+            //sharedInitialArray = [7, 2, 9, 1, 5];
+            // Example with 10 elements:
+            sharedInitialArray = [8, 4, 9, 2, 7, 3, 10, 6, 1, 5];
+
+            // Populate left pane with some instructions or info if empty
+            //const leftPane = document.querySelector('.left-pane');
+            /*if (!leftPane.querySelector('h3')) {
+                leftPane.innerHTML = `
+                `;
+            }*/
+
+
+            insertion_initializeSortProcess();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeAll();
+        });
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>シェルソート ランダム</title>
+    <style>
+        body {
+            margin: 0;
+            /* デフォルトのマージンを削除 */
+            display: flex;
+            /* body要素をFlexコンテナにする */
+            min-height: 100vh;
+            /* 画面全体の高さを確保 */
+            justify-content: center;
+        }
+
+        #main {
+            display: flex;
+            width: 100%;
+        }
+
+        .left-pane {
+            width: 55%;
+            /* 左側の幅 */
+        }
+
+        .right-pane {
+            flex-grow: 1;
+            /* 残りの幅をすべて使う */
+            /* 埋め込みコンテンツがはみ出す場合に備えてoverflowを追加することも検討できますが、指示通り余計なことはしません */
+            /* display: flex; を追加して、中のコンテンツをさらに制御することもできますが、指示通り余計なことはしません */
+        }
+    </style>
+</head>
+
+<body>
+    <div id="main">
+        <div class="left-pane">
+            <img src="shell.png" alt="shell" width="98%">
+        </div>
+        <div class="right-pane">
+            <!DOCTYPE html>
+            <html lang="ja">
+
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>段階的 シェルソート (配色調整・空白削減)</title>
+                <style>
+                    html,
+                    body {
+                        height: 100%;
+                        /* 高さを100%にする */
+                        margin: 0;
+                        font-family: 'Helvetica Neue', Arial, sans-serif;
+                        /* 基本フォントを適用 */
+                    }
+
+                    body {
+                        display: flex;
+                        /* body直下に#mainがくるようにする */
+                        min-height: 100vh;
+                        /* 画面全体の高さを確保 */
+                    }
+
+                    #main {
+                        display: flex;
+                        width: 100%;
+                        /* 全幅を使用 */
+                        height: 100%;
+                        /* 高さいっぱいに広がるように */
+                    }
+
+                    .left-pane {
+                        width: 55%;
+                        padding: 20px;
+                        box-sizing: border-box;
+                        border-right: 1px solid #FFF;
+                        background-color: #FFFFFF;
+                        overflow-y: auto;
+                    }
+
+
+                    .right-pane {
+                        width: 45%;
+                        padding: 20px;
+                        box-sizing: border-box;
+                        background-color: #FFFFFF;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 10px;
+                        overflow-y: auto;
+                        /* コンテンツが多い場合にスクロール */
+                        height: 100%;
+                        /* #mainのheightを継承 */
+                    }
+
+                    #main-app-container {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        background-color: #ffffff;
+                        padding: 25px;
+                        border-radius: 8px;
+                        height: 95vh;
+                        width: 650px;
+                        box-sizing: border-box;
+                        height: 95vh;
+                        max-width: 100%;
+                    }
+
+                    #controls-container {
+                        display: flex;
+                        flex-direction: row;
+                        justify-content: space-between;
+                        align-items: center;
+                        gap: 20px;
+                        margin-bottom: 25px;
+                        width: 100%;
+                        box-sizing: border-box;
+                    }
+
+                    .settings-group {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 12px;
+                    }
+
+                    .control-row {
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                    }
+
+                    .control-row label:first-child {
+                        min-width: 55px;
+                        text-align: right;
+                        margin-right: 5px;
+                        font-size: 0.95em;
+                    }
+
+                    .radio-group {
+                        display: flex;
+                        gap: 10px;
+                    }
+
+                    .radio-group label {
+                        margin-right: 0;
+                        font-size: 0.95em;
+                        display: flex;
+                        align-items: center;
+                    }
+
+                    .radio-group input[type="radio"] {
+                        margin-right: 4px;
+                    }
+
+                    #reset-button {
+                        background-color: #2ecc40;
+                        color: white;
+                        border: none;
+                        padding: 8px 12px;
+                        text-align: center;
+                        text-decoration: none;
+                        display: inline-block;
+                        font-size: 0.9em;
+                        font-weight: bold;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        transition: background-color 0.3s ease;
+                        white-space: nowrap;
+                        height: fit-content;
+                    }
+
+                    #reset-button:hover {
+                        background-color: #27ae60;
+                    }
+
+                    #array-size-slider {
+                        width: 100px;
+                    }
+
+                    #array-size-value {
+                        min-width: 20px;
+                        text-align: left;
+                        font-size: 0.95em;
+                    }
+
+                    #sort-container {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        width: 100%;
+                        box-sizing: border-box;
+                    }
+
+                    .step-row {
+                        display: flex;
+                        align-items: center;
+                        margin-bottom: 0;
+                        justify-content: flex-start;
+                        min-height: 45px;
+                        /* Keep a minimum height for visible rows */
+                        opacity: 0;
+                        /* Initially hidden */
+                        visibility: hidden;
+                        height: 0;
+                        /* Initially no height */
+                        overflow: hidden;
+                        transition: opacity 0.3s ease-out, height 0.3s ease-out, margin-bottom 0.3s ease-out, visibility 0s linear 0.3s;
+                        position: relative;
+                        box-sizing: border-box;
+                        padding: 0;
+                        width: 100%;
+                    }
+
+                    .step-row.visible {
+                        opacity: 1;
+                        height: auto;
+                        /* Auto height when visible */
+                        visibility: visible;
+                        margin-bottom: 4px;
+                        /* Spacing for visible rows */
+                        transition: opacity 0.5s ease-in-out, visibility 0s linear 0s, height 0.5s ease-in-out, margin-bottom 0.5s ease-in-out;
+                    }
+
+                    .initial-array-row.visible {
+                        /* Special margin for the first row */
+                        margin-bottom: 8px;
+                    }
+
+
+                    .number-squares {
+                        display: flex;
+                        gap: 6px;
+                        margin-right: 10px;
+                        flex-wrap: nowrap;
+                        overflow-x: auto;
+                        padding-bottom: 5px;
+                    }
+
+                    .number-element {
+                        width: 40px;
+                        height: 40px;
+                        padding: 0;
+                        border: 1px solid transparent;
+                        border-radius: 4px;
+                        color: black;
+                        /* Default to black for better visibility on light colors */
+                        font-weight: bold;
+                        font-size: 1.2em;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        flex-shrink: 0;
+                        cursor: default;
+                        appearance: none;
+                        -webkit-appearance: none;
+                        -moz-appearance: none;
+                        text-align: center;
+                        text-align-last: center;
+                    }
+
+                    .number-element option {
+                        background-color: white;
+                        color: black;
+                    }
+
+                    /* --- Color Palette Definitions --- */
+                    /* Base Colors (used for the first gap row and potentially others) */
+                    .number-element.state-color-red {
+                        background-color: #FFC0CB;
+                        border-color: #FFB6C1;
+                    }
+
+                    /* Pink */
+                    .number-element.state-color-yellow {
+                        background-color: #FFEB3B;
+                        border-color: #FBC02D;
+                    }
+
+                    /* Yellow */
+
+                    /* Original Colors for 1st Gap Row (now used for 2nd gap row too, or as base) */
+                    .number-element.state-color-base-orange {
+                        background-color: #FFC107;
+                        border-color: #FFA000;
+                    }
+
+                    .number-element.state-color-base-green {
+                        background-color: #4CAF50;
+                        border-color: #388E3C;
+                        color: white;
+                    }
+
+                    /* Green might need white text */
+                    .number-element.state-color-base-lightblue {
+                        background-color: #8CE3FE;
+                        border-color: #7bc8e2;
+                    }
+
+                    /* Lighter Colors for the 1st Gap Processing Row (2nd visible data row) */
+                    .number-element.state-color-light-orange {
+                        background-color: #FFDAB9;
+                        border-color: #FFC8A1;
+                    }
+
+                    /* Peach puff / Light Orange */
+                    .number-element.state-color-light-green {
+                        background-color: #90EE90;
+                        border-color: #7ACC7A;
+                    }
+
+                    /* Light Green */
+                    .number-element.state-color-light-lightblue {
+                        background-color: #8CE3FE;
+                        border-color: #7bc8e2;
+                    }
+
+                    /* Lighter Blue */
+
+
+                    /* Standard states for specific rows */
+                    .number-element.state-initial-display {
+                        /* For the very first array display (All Orange) */
+                        background-color: #FFC107;
+                        /* Orange */
+                        border-color: #FFA000;
+                    }
+
+                    .number-element.state-final-sorted {
+                        /* For the very last, fully sorted array (All Orange) */
+                        background-color: #FFC107;
+                        /* Orange */
+                        border-color: #FFA000;
+                    }
+
+                    .number-element:disabled {
+                        opacity: 1;
+                        cursor: default;
+                    }
+
+                    .number-element:disabled::-ms-expand {
+                        display: none;
+                    }
+
+
+                    .execute-btn {
+                        background-color: #212121;
+                        color: white;
+                        border: 1px solid #000;
+                        width: 38px;
+                        height: 38px;
+                        border-radius: 4px;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+                        transition: background-color 0.2s ease;
+                        padding: 0;
+                        flex-shrink: 0;
+                        cursor: pointer;
+                        margin-right: 12px;
+                    }
+
+                    .execute-btn svg {
+                        fill: white;
+                        width: 16px;
+                        height: 16px;
+                        display: block;
+                    }
+
+                    .execute-btn:disabled {
+                        background-color: #666666;
+                        border-color: #555555;
+                        cursor: not-allowed;
+                        box-shadow: none;
+                    }
+
+                    .execute-btn:disabled svg {
+                        fill: #cccccc;
+                    }
+
+                    .status-text {
+                        font-size: 1.0em;
+                        font-weight: bold;
+                        min-width: 60px;
+                        text-align: left;
+                        line-height: 40px;
+                        flex-shrink: 0;
+                    }
+
+                    .status-ok {
+                        color: #2ecc40;
+                    }
+
+                    .status-error {
+                        color: #ff4136;
+                    }
+
+                    .status-complete {
+                        color: #2ecc40;
+                    }
+
+                    .empty-array-message {
+                        padding: 10px;
+                        text-align: center;
+                        font-size: 1.1em;
+                        font-weight: bold;
+                        color: #555;
+                        width: 100%;
+                        min-height: 45px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        margin-bottom: 4px;
+                        /* Match .step-row.visible */
+                    }
+
+                    #gap-info-container {
+                        margin-bottom: 15px;
+                        font-size: 1.1em;
+                        font-weight: bold;
+                        color: #333;
+                        text-align: center;
+                        width: 100%;
+                        padding: 8px;
+                        background-color: #f9f9f9;
+                        border-radius: 4px;
+                        border: 1px solid #eee;
+                    }
+
+                    @media (max-width: 580px) {
+                        #main-app-container {
+                            padding: 15px;
+                            max-width: 95%;
+                        }
+
+                        #controls-container {
+                            flex-direction: column;
+                            align-items: stretch;
+                        }
+
+                        .settings-group {
+                            align-items: center;
+                            width: 100%;
+                        }
+
+                        .control-row {
+                            justify-content: center;
+                            width: 100%;
+                        }
+
+                        .control-row label:first-child {
+                            text-align: left;
+                            min-width: auto;
+                            margin-right: 10px;
+                        }
+
+                        .radio-group {
+                            flex-wrap: wrap;
+                            justify-content: center;
+                        }
+
+                        #reset-button {
+                            width: 100%;
+                            margin-top: 15px;
+                            padding: 10px 15px;
+                            font-size: 1em;
+                        }
+                    }
+
+                    @media (max-width: 480px) {
+                        .number-squares {
+                            gap: 4px;
+                            margin-right: 8px;
+                        }
+
+                        .number-element {
+                            width: 32px;
+                            height: 32px;
+                            font-size: 1em;
+                        }
+
+                        .execute-btn {
+                            width: 32px;
+                            height: 32px;
+                            margin-right: 8px;
+                        }
+
+                        .execute-btn svg {
+                            width: 14px;
+                            height: 14px;
+                        }
+
+                        .status-text {
+                            font-size: 1em;
+                            min-width: 50px;
+                            line-height: 32px;
+                        }
+                    }
+                </style>
+            </head>
+
+            <body>
+                <div id="main-app-container">
+                    <div id="controls-container">
+                        <div class="settings-group">
+                            <div class="control-row">
+                                <label for="array-size-slider">要素数:</label>
+                                <input type="range" id="array-size-slider" min="5" max="10" value="7">
+                                <span id="array-size-value">7</span>
+                            </div>
+                            <div class="control-row">
+                                <label>文字種:</label>
+                                <div class="radio-group">
+                                    <label><input type="radio" name="char-type" value="numbers" checked> 数字</label>
+                                    <label><input type="radio" name="char-type" value="alphabets"> ABC</label>
+                                    <label><input type="radio" name="char-type" value="hiragana"> あいう</label>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="reset-button">更新して開始</button>
+                    </div>
+
+                    <div id="gap-info-container">
+                        現在のギャップ: <span id="current-gap-value">-</span>
+                    </div>
+
+                    <div id="sort-container">
+                        <!-- JavaScript will populate this area -->
+                    </div>
+                </div>
+
+                <script>
+                    let initialArray = [];
+                    let currentArray = [];
+                    let selectedCharType = 'numbers';
+                    let allPossibleOptionsForSelect = [];
+
+                    const MAX_ROWS_TO_DISPLAY = 8; // Reduced max rows to prevent excessive blank space
+
+                    let shellSortState = {
+                        gaps: [],
+                        currentGapIndex: 0,
+                        currentRowIndex: 0,
+                        currentGapForColoring: 0,
+                    };
+
+                    const sortContainer = document.getElementById('sort-container');
+                    let allRowsElements = [];
+                    let allNumberElementsInRows = [];
+                    let allExecuteButtons = [];
+                    let allStatusTexts = [];
+
+                    const arraySizeSlider = document.getElementById('array-size-slider');
+                    const arraySizeValueDisplay = document.getElementById('array-size-value');
+                    const resetButton = document.getElementById('reset-button');
+                    const charTypeRadios = document.querySelectorAll('input[name="char-type"]');
+                    const currentGapValueDisplay = document.getElementById('current-gap-value');
+
+                    // Define color patterns for different rows/gap stages
+                    const COLOR_PATTERN_ROW_0 = [ // For 1st gap processing row (index 0 in UI rows for gaps)
+                        "state-color-red",
+                        "state-color-light-orange", // Lighter orange
+                        "state-color-yellow",
+                        "state-color-light-green",  // Lighter green
+                        "state-color-light-lightblue" // Lighter lightblue
+                    ];
+                    const COLOR_PATTERN_ROW_1 = [ // For 2nd gap processing row (index 1 in UI rows for gaps)
+                        "state-color-red",
+                        "state-color-yellow",
+                        "state-color-base-lightblue" // Original lightblue
+                    ];
+                    // Fallback pattern for subsequent rows (if any, or use COLOR_PATTERN_ROW_0 cyclically)
+                    const COLOR_PATTERN_DEFAULT = COLOR_PATTERN_ROW_0;
+
+
+                    const ALPHABET_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                    const HIRAGANA_CHARS = "あいうえおかきくけこさしすせそたちつてとなにぬねのひふへほまみむめも";
+
+                    function generateRandomArray(size, type) {
+                        const arr = new Set();
+                        let sourceChars;
+                        let actualSize = size;
+
+                        if (type === 'numbers') {
+                            while (arr.size < actualSize) {
+                                arr.add(Math.floor(Math.random() * 90) + 10);
+                            }
+                        } else if (type === 'alphabets') {
+                            sourceChars = ALPHABET_CHARS;
+                            if (actualSize > sourceChars.length) {
+                                actualSize = sourceChars.length;
+                            }
+                            let tempSourceArray = sourceChars.split('');
+                            for (let i = tempSourceArray.length - 1; i > 0; i--) {
+                                const j = Math.floor(Math.random() * (i + 1));
+                                [tempSourceArray[i], tempSourceArray[j]] = [tempSourceArray[j], tempSourceArray[i]];
+                            }
+                            for (let i = 0; i < actualSize; i++) {
+                                arr.add(tempSourceArray[i]);
+                            }
+
+                        } else if (type === 'hiragana') {
+                            sourceChars = HIRAGANA_CHARS;
+                            if (actualSize > sourceChars.length) {
+                                actualSize = sourceChars.length;
+                            }
+                            let tempSourceArray = sourceChars.split('');
+                            for (let i = tempSourceArray.length - 1; i > 0; i--) {
+                                const j = Math.floor(Math.random() * (i + 1));
+                                [tempSourceArray[i], tempSourceArray[j]] = [tempSourceArray[j], tempSourceArray[i]];
+                            }
+                            for (let i = 0; i < actualSize; i++) {
+                                arr.add(tempSourceArray[i]);
+                            }
+                        }
+                        return Array.from(arr);
+                    }
+
+                    function createSelectElement(id, value, optionsArray, stateClasses, isDisabled) {
+                        const select = document.createElement('select');
+                        select.id = id;
+                        select.className = `number-element ${stateClasses}`;
+                        select.disabled = isDisabled;
+                        const stringValueToSelect = String(value);
+
+                        let currentOptions = [...new Set(optionsArray)];
+                        if (!currentOptions.map(String).includes(stringValueToSelect) && (value !== undefined && value !== null && value !== '')) {
+                            currentOptions.push(value);
+                        }
+
+                        currentOptions.sort((a, b) => {
+                            if (selectedCharType === 'numbers') {
+                                const numA = Number(a); const numB = Number(b);
+                                if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                            }
+                            return String(a).localeCompare(String(b), 'ja');
+                        });
+
+                        currentOptions.forEach(optVal => {
+                            const option = document.createElement('option');
+                            const stringOptVal = String(optVal);
+                            option.value = stringOptVal;
+                            option.textContent = stringOptVal;
+                            select.appendChild(option);
+                        });
+
+                        select.value = stringValueToSelect;
+
+                        if (select.value !== stringValueToSelect && select.options.length > 0) {
+                            for (let i = 0; i < select.options.length; i++) {
+                                if (select.options[i].textContent === stringValueToSelect) {
+                                    select.selectedIndex = i;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (select.selectedIndex === -1 && (value !== undefined && value !== null && value !== '') && !currentOptions.map(String).includes(stringValueToSelect)) {
+                            const option = document.createElement('option');
+                            option.value = stringValueToSelect; option.textContent = stringValueToSelect;
+                            select.appendChild(option); select.value = stringValueToSelect;
+                        }
+                        return select;
+                    }
+
+                    /*function getGaps(N) {
+                        if (N === 10) {
+                            return [5, 3, 1];
+                        }
+                        const knuthGaps = [];
+                        let k_h = 1;
+                        while(k_h < N) {
+                            knuthGaps.push(k_h);
+                            k_h = 3 * k_h + 1;
+                        }
+                        let finalGaps = knuthGaps.filter(g => g < N).reverse();
+                        if (N > 1 && finalGaps.length === 0) finalGaps.push(1);
+                        return finalGaps;
+                    }*/
+                    function getGaps(N) {
+                        if (N <= 1) {
+                            return [];
+                        }
+                        const gaps = [];
+                        let gap = Math.floor(N / 2);
+                        /*if (gap % 2 !== 0 && gap !== 1) {
+                            gap = gap + 1; // または gap += 1;
+                        }*/
+                        while (gap > 0) {
+                            gaps.push(gap);
+                            gap = Math.floor(gap / 2);
+                        }
+                        // console.log("Generated Shell original gaps for N=" + N + ":", gaps); // デバッグ用
+                        return gaps;
+                    }/*
+        function getGaps(N) {
+            if (N === 10) {
+                return [5, 2, 1]; // N=10 の場合はこのシーケンスを使用
+            }
+            // それ以外のNの場合は、既存のKnuthのシーケンス（または他のシーケンス）を使用
+            const knuthGaps = [];
+            let k_h = 1;
+            while(k_h < N) {
+                knuthGaps.push(k_h);
+                k_h = 3 * k_h + 1;
+            }
+            let finalGaps = knuthGaps.filter(g => g < N).reverse();
+            if (N > 1 && finalGaps.length === 0) finalGaps.push(1);
+            return finalGaps;
+        }*/
+
+
+                    function generateRows(numInitialElements) {
+                        sortContainer.innerHTML = '';
+                        allRowsElements = [];
+                        allNumberElementsInRows = [];
+                        allExecuteButtons = [];
+                        allStatusTexts = [];
+
+                        if (numInitialElements > 0) {
+                            const initialDisplayRowDiv = document.createElement('div');
+                            initialDisplayRowDiv.className = 'step-row visible initial-array-row'; // Make initial visible
+                            const initialSquaresDiv = document.createElement('div');
+                            initialSquaresDiv.className = 'number-squares';
+
+                            initialArray.forEach((val, index) => {
+                                const selectEl = createSelectElement(
+                                    `initial-el-${index}`, val, [val], 'state-initial-display', true
+                                );
+                                initialSquaresDiv.appendChild(selectEl);
+                            });
+                            initialDisplayRowDiv.appendChild(initialSquaresDiv);
+                            sortContainer.appendChild(initialDisplayRowDiv);
+                        } else {
+                            const emptyMsgDiv = document.createElement('div');
+                            emptyMsgDiv.className = 'empty-array-message visible'; // Make visible
+                            emptyMsgDiv.textContent = "要素がありません";
+                            sortContainer.appendChild(emptyMsgDiv);
+                        }
+
+                        // Generate a fixed number of rows (MAX_ROWS_TO_DISPLAY - 1 for gap rows)
+                        // These will be made visible/hidden as needed.
+                        for (let i = 0; i < MAX_ROWS_TO_DISPLAY - 1; i++) {
+                            const rowDiv = document.createElement('div');
+                            rowDiv.className = 'step-row'; // Initially hidden (no .visible class)
+                            rowDiv.id = `step-row-${i}`;
+
+                            const squaresDiv = document.createElement('div');
+                            squaresDiv.className = 'number-squares';
+                            const currentNumberElementsForRow = [];
+                            for (let j = 0; j < numInitialElements; j++) {
+                                const selectEl = createSelectElement(`el-${i}-${j}`, '', [], 'state-color-red', true);
+                                squaresDiv.appendChild(selectEl);
+                                currentNumberElementsForRow.push(selectEl);
+                            }
+                            allNumberElementsInRows.push(currentNumberElementsForRow);
+                            rowDiv.appendChild(squaresDiv);
+
+                            const button = document.createElement('button');
+                            button.className = 'execute-btn';
+                            button.dataset.rowIndex = i;
+                            button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>';
+                            button.disabled = true;
+                            button.style.display = 'none'; // Initially hide button
+                            button.addEventListener('click', handleExecute);
+                            allExecuteButtons[i] = button;
+                            rowDiv.appendChild(button);
+
+                            const statusSpan = document.createElement('span');
+                            statusSpan.className = 'status-text';
+                            statusSpan.id = `status-${i}`;
+                            allStatusTexts[i] = statusSpan;
+                            rowDiv.appendChild(statusSpan);
+
+                            sortContainer.appendChild(rowDiv);
+                            allRowsElements.push(rowDiv);
+                        }
+                    }
+
+                    function prepareStepUI(rowIndex, arrayToDisplay) {
+                        if (rowIndex >= allRowsElements.length || shellSortState.currentGapIndex >= shellSortState.gaps.length) {
+                            return;
+                        }
+
+                        const currentGap = shellSortState.gaps[shellSortState.currentGapIndex];
+                        shellSortState.currentGapForColoring = currentGap;
+                        currentGapValueDisplay.textContent = currentGap;
+
+                        const currentRowElement = allRowsElements[rowIndex];
+                        currentRowElement.classList.add('visible'); // Make this row visible
+                        const currentSelectsInRow = allNumberElementsInRows[rowIndex];
+
+                        let activeColorPattern;
+                        if (rowIndex === 0) { // First gap processing row
+                            activeColorPattern = COLOR_PATTERN_ROW_0;
+                        } else if (rowIndex === 1) { // Second gap processing row
+                            activeColorPattern = COLOR_PATTERN_ROW_1;
+                        } else { // Subsequent gap rows (if any)
+                            activeColorPattern = COLOR_PATTERN_DEFAULT; // Or another specific pattern
+                        }
+
+                        currentSelectsInRow.forEach((selectEl, colIndex) => {
+                            let value = arrayToDisplay[colIndex];
+                            let sublistIndex = colIndex % shellSortState.currentGapForColoring;
+                            let cellStateClass = activeColorPattern[sublistIndex % activeColorPattern.length];
+
+                            const newSelectEl = createSelectElement(
+                                selectEl.id, value, allPossibleOptionsForSelect, cellStateClass, false
+                            );
+                            selectEl.parentNode.replaceChild(newSelectEl, selectEl);
+                            currentSelectsInRow[colIndex] = newSelectEl;
+                        });
+
+                        if (allExecuteButtons[rowIndex]) {
+                            allExecuteButtons[rowIndex].disabled = false;
+                            allExecuteButtons[rowIndex].style.display = 'flex';
+                        }
+                        if (allStatusTexts[rowIndex]) {
+                            allStatusTexts[rowIndex].textContent = '';
+                            allStatusTexts[rowIndex].className = 'status-text';
+                        }
+                    }
+
+                    function displayFinalSortedArray(sortedArray, lastUsedRowIdx) {
+                        let finalDisplayRowIndex = lastUsedRowIdx;
+                        // If lastUsedRowIdx is for a gap, the next row could be used for "final" if available and distinct
+                        if (shellSortState.currentRowIndex < allRowsElements.length &&
+                            shellSortState.currentRowIndex > lastUsedRowIdx) {
+                            finalDisplayRowIndex = shellSortState.currentRowIndex;
+                        } else if (lastUsedRowIdx + 1 < allRowsElements.length) {
+                            finalDisplayRowIndex = lastUsedRowIdx + 1;
+                        }
+                        // Ensure finalDisplayRowIndex is valid
+                        finalDisplayRowIndex = Math.min(finalDisplayRowIndex, allRowsElements.length - 1);
+                        if (finalDisplayRowIndex < 0) finalDisplayRowIndex = 0; // Should not happen with current logic
+
+                        let targetRowElement = allRowsElements[finalDisplayRowIndex];
+                        let targetSelectsInRow = allNumberElementsInRows[finalDisplayRowIndex];
+                        let targetStatusText = allStatusTexts[finalDisplayRowIndex];
+                        let targetExecuteButton = allExecuteButtons[finalDisplayRowIndex];
+
+                        if (!targetRowElement) {
+                            console.error("Cannot find a row to display final sorted array. Index:", finalDisplayRowIndex);
+                            currentGapValueDisplay.textContent = (sortedArray.length <= 1) ? "ソート不要" : "ソート完了";
+                            return;
+                        }
+
+                        targetRowElement.classList.add('visible');
+                        if (targetExecuteButton) targetExecuteButton.style.display = 'none';
+
+                        if (targetSelectsInRow) {
+                            targetSelectsInRow.forEach((select, colIndex) => {
+                                const finalValue = sortedArray[colIndex];
+                                const newSelectEl = createSelectElement(
+                                    select.id, finalValue, [finalValue], 'state-final-sorted', true
+                                );
+                                if (select.parentNode) {
+                                    select.parentNode.replaceChild(newSelectEl, select);
+                                }
+                                if (targetSelectsInRow) targetSelectsInRow[colIndex] = newSelectEl;
+                            });
+                        }
+                        if (targetStatusText) {
+                            targetStatusText.textContent = '完了';
+                            targetStatusText.className = 'status-text status-complete';
+                        }
+
+                        currentGapValueDisplay.textContent = (sortedArray.length <= 1) ? "ソート不要" : "ソート完了";
+
+                        // Hide all rows after the final display row
+                        for (let i = finalDisplayRowIndex + 1; i < allRowsElements.length; i++) {
+                            if (allRowsElements[i]) {
+                                allRowsElements[i].classList.remove('visible');
+                                if (allExecuteButtons[i]) allExecuteButtons[i].style.display = 'none';
+                                if (allStatusTexts[i]) allStatusTexts[i].textContent = '';
+                            }
+                        }
+                    }
+
+                    function handleExecute(event) {
+                        const button = event.currentTarget;
+                        const buttonRowIndex = parseInt(button.dataset.rowIndex);
+
+                        if (buttonRowIndex !== shellSortState.currentRowIndex) return;
+
+                        const numElements = currentArray.length;
+                        const currentStatusText = allStatusTexts[shellSortState.currentRowIndex];
+                        const userSelectedRowState = [];
+                        const selectsInCurrentRow = allNumberElementsInRows[shellSortState.currentRowIndex];
+
+                        selectsInCurrentRow.forEach(selectEl => {
+                            const val = selectEl.value;
+                            userSelectedRowState.push(selectedCharType === 'numbers' ? Number(val) : val);
+                        });
+
+                        let expectedArrayAfterGapSort = [...currentArray];
+                        const currentGap = shellSortState.gaps[shellSortState.currentGapIndex];
+                        let comparisonFn = (a, b) => {
+                            if (selectedCharType === 'numbers') {
+                                return Number(a) > Number(b);
+                            }
+                            return String(a).localeCompare(String(b), 'ja') > 0;
+                        };
+
+                        for (let i = currentGap; i < numElements; i++) {
+                            let tempKey = expectedArrayAfterGapSort[i];
+                            let k = i;
+                            while (k >= currentGap && comparisonFn(expectedArrayAfterGapSort[k - currentGap], tempKey)) {
+                                expectedArrayAfterGapSort[k] = expectedArrayAfterGapSort[k - currentGap];
+                                k -= currentGap;
+                            }
+                            expectedArrayAfterGapSort[k] = tempKey;
+                        }
+
+                        let isUserSetupCorrect = true;
+                        for (let i = 0; i < numElements; i++) {
+                            if (String(userSelectedRowState[i]) !== String(expectedArrayAfterGapSort[i])) {
+                                isUserSetupCorrect = false;
+                                break;
+                            }
+                        }
+
+                        if (isUserSetupCorrect) {
+                            currentStatusText.textContent = 'OK';
+                            currentStatusText.className = 'status-text status-ok';
+                            button.disabled = true;
+                            currentArray = [...expectedArrayAfterGapSort];
+
+                            let activeColorPattern;
+                            if (shellSortState.currentRowIndex === 0) {
+                                activeColorPattern = COLOR_PATTERN_ROW_0;
+                            } else if (shellSortState.currentRowIndex === 1) {
+                                activeColorPattern = COLOR_PATTERN_ROW_1;
+                            } else {
+                                activeColorPattern = COLOR_PATTERN_DEFAULT;
+                            }
+
+                            allNumberElementsInRows[shellSortState.currentRowIndex].forEach((sel, idx) => {
+                                const finalValueInCell = currentArray[idx];
+                                let sublistIndex = idx % shellSortState.currentGapForColoring; // Use the gap stored for this row's coloring
+                                let cellStateClass = activeColorPattern[sublistIndex % activeColorPattern.length];
+                                const newSelectEl = createSelectElement(
+                                    sel.id, finalValueInCell, [finalValueInCell], cellStateClass, true
+                                );
+                                sel.parentNode.replaceChild(newSelectEl, sel);
+                                allNumberElementsInRows[shellSortState.currentRowIndex][idx] = newSelectEl;
+                            });
+
+                            shellSortState.currentGapIndex++;
+                            const previousRowIndex = shellSortState.currentRowIndex; // Keep track of the row just completed
+                            shellSortState.currentRowIndex++;
+
+                            if (shellSortState.currentGapIndex < shellSortState.gaps.length) {
+                                if (shellSortState.currentRowIndex < allRowsElements.length) {
+                                    prepareStepUI(shellSortState.currentRowIndex, currentArray);
+                                } else {
+                                    console.error("Ran out of UI rows for next gap step.");
+                                    displayFinalSortedArray(currentArray, previousRowIndex);
+                                }
+                            } else {
+                                displayFinalSortedArray(currentArray, previousRowIndex);
+                            }
+                        } else {
+                            currentStatusText.textContent = 'エラー';
+                            currentStatusText.className = 'status-text status-error';
+                        }
+                    }
+
+                    function initializeSortProcess() {
+                        const selectedSize = parseInt(arraySizeSlider.value);
+                        selectedCharType = document.querySelector('input[name="char-type"]:checked').value;
+
+                        initialArray = generateRandomArray(selectedSize, selectedCharType);
+                        if (initialArray.length !== selectedSize) {
+                            arraySizeSlider.value = initialArray.length;
+                            arraySizeValueDisplay.textContent = initialArray.length;
+                        }
+
+                        let uniqueElements = [...new Set(initialArray)];
+                        if (selectedCharType === 'numbers') {
+                            allPossibleOptionsForSelect = uniqueElements.map(Number).sort((a, b) => a - b);
+                        } else {
+                            allPossibleOptionsForSelect = uniqueElements.map(String).sort((a, b) => a.localeCompare(b, 'ja'));
+                        }
+
+                        currentArray = [...initialArray];
+
+                        shellSortState.gaps = getGaps(currentArray.length);
+                        shellSortState.currentGapIndex = 0;
+                        shellSortState.currentRowIndex = 0;
+                        if (shellSortState.gaps.length > 0) {
+                            shellSortState.currentGapForColoring = shellSortState.gaps[0];
+                        } else {
+                            shellSortState.currentGapForColoring = 1;
+                        }
+
+                        sortContainer.innerHTML = '';
+                        generateRows(currentArray.length); // Generates rows, initially hidden except first
+
+                        // Hide all initially generated gap rows (allRowsElements)
+                        allRowsElements.forEach(row => row.classList.remove('visible'));
+                        // Make initial array row visible (already done in generateRows, but be sure)
+                        const initialRowDiv = sortContainer.querySelector('.initial-array-row');
+                        if (initialRowDiv) initialRowDiv.classList.add('visible');
+
+
+                        if (currentArray.length <= 1 || shellSortState.gaps.length === 0) {
+                            displayFinalSortedArray(currentArray, -1); // Pass -1 or 0 to indicate no gap rows used for sorting.
+                            // displayFinalSortedArray will use an available row.
+                            currentGapValueDisplay.textContent = (currentArray.length <= 1) ? "ソート不要" : "-";
+                            allExecuteButtons.forEach(btn => { if (btn) btn.style.display = 'none'; });
+                            return;
+                        }
+
+                        prepareStepUI(shellSortState.currentRowIndex, currentArray); // Prepare and show the first gap row
+                    }
+
+                    arraySizeSlider.addEventListener('input', (event) => {
+                        arraySizeValueDisplay.textContent = event.target.value;
+                    });
+
+                    resetButton.addEventListener('click', initializeSortProcess);
+                    charTypeRadios.forEach(radio => radio.addEventListener('change', () => {
+                    }));
+
+                    document.addEventListener('DOMContentLoaded', () => {
+                        arraySizeSlider.value = "7";
+                        arraySizeValueDisplay.textContent = arraySizeSlider.value;
+                        document.querySelector('input[name="char-type"][value="numbers"]').checked = true;
+                        initializeSortProcess();
+                    });
+
+                </script>
+            </body>
+
+            </html>
+        </div>
+    </div>
+</body>
+
+</html>

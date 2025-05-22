@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>選択メニュー</title>
+    <!-- Font Awesome CDN for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <style>
+        /* Basic Reset and Body Styling */
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; /* Common Japanese font stack */
+            background-color: #f8f9fa; /* Light background */
+            display: flex; /* Enable flexbox for centering */
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
+        }
+
+        /* Container for the buttons */
+        .button-container {
+            display: flex; /* Arrange buttons horizontally */
+            flex-wrap: wrap; /* Allow wrapping on smaller screens if needed */
+            justify-content: center; /* Center buttons within the container */
+            gap: 30px; /* Space between buttons */
+            padding: 20px; /* Padding around the container */
+        }
+
+        /* Individual Button Styling */
+        .card-button {
+            display: flex;
+            flex-direction: column; /* Stack icon and text vertically */
+            align-items: center; /* Center items horizontally */
+            justify-content: center; /* Center items vertically */
+            width: 160px; /* Button width */
+            height: 160px; /* Button height */
+            background-color: #ffffff; /* White background */
+            border-radius: 12px; /* Rounded corners */
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08); /* Subtle shadow */
+            text-decoration: none; /* Remove underline from link */
+            color: #333333; /* Default text color */
+            transition: transform 0.2s ease, box-shadow 0.2s ease; /* Smooth hover effect */
+            text-align: center; /* Ensure text is centered */
+            overflow: hidden; /* Prevent content spillover */
+        }
+
+        .card-button:hover {
+            transform: translateY(-5px); /* Lift effect on hover */
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12); /* Enhanced shadow on hover */
+        }
+
+        /* Icon Wrapper Styling */
+        .icon-wrapper {
+            margin-bottom: 15px; /* Space between icon and text */
+            font-size: 48px; /* Icon size */
+        }
+
+        /* --- Icon Specific Colors (Sticky Note Colors) --- */
+        /* グループ１: ピンク系の付箋 */
+        .icon-group1 i {
+            color: #f7a8b8; /* Light Pink */
+        }
+
+        /* グループ２: 緑系の付箋 */
+        .icon-group2 i {
+            color: #a2e0a2; /* Light Green */
+        }
+
+        /* グループ３: 青系の付箋 */
+        .icon-group3 i {
+            color: #a1c9f4; /* Light Blue */
+        }
+
+        /* グループ４: 黄色系の付箋 */
+        .icon-group4 i {
+            color: #f9e498; /* Light Yellow */
+        }
+        /* --- End Icon Specific Colors --- */
+
+        /* Text Styling */
+        .card-button p {
+            margin: 0; /* Remove default paragraph margin */
+            font-size: 16px; /* Text size */
+            font-weight: 500; /* Slightly bold text */
+        }
+
+        /* Responsive adjustments (optional, for smaller screens) */
+        @media (max-width: 600px) {
+            .button-container {
+                gap: 20px; /* Reduce gap */
+            }
+            .card-button {
+                width: 130px; /* Smaller buttons */
+                height: 130px;
+            }
+            .icon-wrapper {
+                font-size: 40px; /* Smaller icons */
+                margin-bottom: 10px;
+            }
+            .card-button p {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="button-container">
+
+        <!-- グループ１ ボタン -->
+        <a href="memo1.html" class="card-button">
+            <div class="icon-wrapper icon-group1">
+                <!-- 付箋アイコンに変更 -->
+                <i class="fas fa-sticky-note"></i>
+            </div>
+            <p>グループ１</p>
+        </a>
+
+        <!-- グループ２ ボタン -->
+        <a href="memo2.html" class="card-button">
+            <div class="icon-wrapper icon-group2">
+                <!-- 付箋アイコンに変更 -->
+                <i class="fas fa-sticky-note"></i>
+            </div>
+            <p>グループ２</p>
+        </a>
+
+        <!-- グループ３ ボタン -->
+        <a href="memo3.html" class="card-button">
+            <div class="icon-wrapper icon-group3">
+                 <!-- 付箋アイコンに変更 -->
+                <i class="fas fa-sticky-note"></i>
+            </div>
+            <p>グループ３</p>
+        </a>
+
+        <!-- グループ４ ボタン -->
+        <a href="memo4.html" class="card-button">
+            <div class="icon-wrapper icon-group4">
+                <!-- 付箋アイコンに変更 -->
+                <i class="fas fa-sticky-note"></i>
+            </div>
+            <p>グループ４</p>
+        </a>
+    </div>
+
+    <!-- Create empty files named memo.html, memo2.html, memo3.html, memo4.html
+         in the same directory as this HTML file -->
+
+</body>
+</html>

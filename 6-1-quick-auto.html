@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>クイックソート 選択</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* --- スタイル 1: Flexboxレイアウト --- */
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        #main {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .left-pane {
+            width: 55%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #FFFFFF;
+            overflow-y: auto;
+        }
+
+        .right-pane {
+            width: 45%;
+            padding: 20px;
+            /* 上下左右のパディング */
+            box-sizing: border-box;
+            background-color: #FFF;
+            /* 背景色 */
+            display: flex;
+            flex-direction: column;
+            /* align-items: center; /* sort-module-wrapper が幅100%なので不要 */
+            gap: 15px;
+            /* コントロールとソートモジュール間のスペース */
+            overflow-y: auto;
+            /* height: 100% との組み合わせ */
+            height: 100%;
+            /* 右ペインの高さを100%に */
+        }
+
+        /* --- コントロールパネルのスタイル (バブルソート風) --- */
+        #controls-container {
+            /* IDセレクタに変更 */
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 750px;
+            /* 最大幅は維持 */
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+
+        #controls-container button {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            background-color: #f0f0f0;
+            cursor: pointer;
+            /* バブルソートのスタイル */
+            font-size: 0.9em;
+            /* バブルソートのスタイル */
+            transition: background-color 0.2s ease;
+        }
+
+        #controls-container button:hover {
+            background-color: #e0e0e0;
+        }
+
+        #controls-container button:disabled {
+            background-color: #f5f5f5;
+            /* バブルソートのスタイル */
+            color: #aaa;
+            /* バブルソートのスタイル */
+            cursor: not-allowed;
+            border-color: #ddd;
+            /* バブルソートのスタイル */
+        }
+
+        #controls-container label {
+            font-size: 0.9em;
+            color: #333;
+            /* バブルソートのスタイル */
+        }
+
+        #speed-range {
+            /* IDセレクタに変更 */
+            flex-grow: 1;
+            max-width: 180px;
+            /* バブルソートのスタイル */
+            margin: 0 5px;
+            /* バブルソートのスタイル */
+        }
+
+        #speed-value-display {
+            min-width: 55px;
+            /* ms表示のため少し広げる */
+            text-align: right;
+            font-size: 0.9em;
+            color: #333;
+            /* バブルソートのスタイル */
+        }
+
+        .sort-module-wrapper {
+            width: 100%;
+            max-width: 750px;
+            /* 最大幅は維持 */
+            background-color: #ffffff;
+            padding: 20px;
+            /* 上下左右パディング */
+            border-radius: 8px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* バブルソートのスタイル */
+            flex-grow: 1;
+            /* 残りのスペースを埋める */
+            overflow: hidden;
+            /* 内容が多い場合にスクロールバーが出るように */
+        }
+
+        .pane-title {
+            display: none;
+            /* クイックソートでは引き続き非表示 */
+        }
+
+        /* --- クイックソート 手動ステップ --- */
+        #quicksort_main-app-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 10px;
+        }
+
+        #quicksort_sort-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        .step-info-container {
+            opacity: 1;
+            visibility: visible;
+            max-height: 1000px;
+            height: auto;
+            transition: opacity 0.5s ease-in-out, height 0.5s ease-in-out, margin-bottom 0.5s ease-in-out, visibility 0s linear 0s;
+            margin-bottom: 8px;
+        }
+
+        .step-info-container:not(.visible) {
+            opacity: 0;
+            height: 0;
+            max-height: 0;
+            overflow: hidden;
+            visibility: hidden;
+            pointer-events: none;
+            margin-bottom: 0;
+            transition: opacity 0.3s ease-out, height 0.3s ease-out, max-height 0.3s ease-out, margin-bottom 0.3s ease-out, visibility 0s linear 0.3s;
+        }
+
+        .step-info-container.visible {
+            opacity: 1;
+            height: auto;
+            max-height: 1000px;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .step-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0;
+            justify-content: flex-start;
+            min-height: 45px;
+            position: relative;
+            box-sizing: border-box;
+            padding: 0 10px;
+            width: 100%;
+        }
+
+        .initial-array-row {
+            margin-bottom: 8px;
+        }
+
+        .number-squares {
+            display: flex;
+            gap: 6px;
+            margin-right: 10px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .number-element,
+        .bar_item {
+            transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, height 0.3s ease;
+        }
+
+        .number-element {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            cursor: default;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            text-align: center;
+            text-align-last: center;
+        }
+
+        .number-element option {
+            background-color: white;
+            color: black;
+        }
+
+        .number-element:disabled {
+            opacity: 1;
+            cursor: default;
+        }
+
+        .number-element:disabled::-ms-expand {
+            display: none;
+        }
+
+        /* --- 状態別スタイル --- */
+        .number-element.state-initial,
+        .bar_item.state-initial {
+            background-color: #FFC107;
+            border-color: #FFA000;
+            color: black;
+            font-weight: bold;
+        }
+
+        .number-element.state-default,
+        .bar_item.state-default {
+            background-color: #cccccc;
+            border-color: #b3b3b3;
+            color: #333;
+        }
+
+        .number-element.state-fixed-pivot,
+        .bar_item.state-fixed-pivot {
+            background-color: #ff4136;
+            border-color: #dc2a23;
+            color: white;
+            font-weight: bolder;
+        }
+
+        .number-element.state-interactive,
+        .bar_item.state-interactive {
+            background-color: #8CE3FE;
+            border-color: #7bc8e2;
+            color: black;
+            cursor: pointer;
+        }
+
+        .number-element.state-confirmed,
+        .bar_item.state-confirmed {
+background-color: #96DCF8;
+border-color: #8CE3FE;
+            color:#FFF;
+        }
+
+        .number-element.state-final-display,
+        .bar_item.state-final-display {
+            background-color: #FFC107;
+            border-color: #FFA000;
+            color: black;
+        }
+
+        .number-element.state-compare-smaller,
+        .bar_item.state-compare-smaller {
+            background-color: #a0e67c;
+            border-color: #88d86a;
+            color: black;
+            font-weight: bolder;
+        }
+
+        .number-element.state-compare-larger,
+        .bar_item.state-compare-larger {
+            background-color: #ffcc80;
+            border-color: #ffb74d;
+            color: black;
+            font-weight: bolder;
+        }
+
+        .number-element.state-comparing-with-pivot,
+        .bar_item.state-comparing-with-pivot {
+            background-color: #f7dc6f;
+            /* Bright yellow */
+            border-color: #f4d03f;
+            color: black;
+            box-shadow: 0 0 10px rgba(247, 220, 111, 0.8);
+            font-weight: bolder;
+        }
+
+
+        .execute-btn {
+            background-color: #212121;
+            color: white;
+            border: 1px solid #000;
+            width: 38px;
+            height: 38px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            transition: background-color 0.2s ease;
+            padding: 0;
+            flex-shrink: 0;
+            cursor: pointer;
+            margin-right: 12px;
+        }
+
+        .execute-btn svg {
+            fill: white;
+            width: 16px;
+            height: 16px;
+            display: block;
+        }
+
+        .execute-btn:disabled {
+            background-color: #666666;
+            border-color: #555555;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .execute-btn:disabled svg {
+            fill: #cccccc;
+        }
+
+        .status-text {
+            font-size: 1.0em;
+            font-weight: bold;
+            min-width: 80px;
+            text-align: left;
+            line-height: 40px;
+            flex-shrink: 0;
+        }
+
+        .status-ok {
+            color: #2ecc40;
+        }
+
+        .status-error {
+            color: #ff4136;
+        }
+
+        .status-complete {
+            color: #2ecc40;
+        }
+
+        .empty-array-message {
+            padding: 10px;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #555;
+            width: 100%;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+
+        #sync_bar_graph_container {
+            display: flex;
+            width: 100%;
+            min-height: 200px;
+            padding: 10px 0;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+
+        #bar_items_wrapper {
+            display: flex;
+            gap: 5px;
+            align-items: flex-end;
+            position: relative;
+            width: 100%;
+            overflow-x: auto;
+            padding: 5px;
+            box-sizing: border-box;
+        }
+
+        .bar_item {
+            width: 40px;
+            text-align: center;
+            border: 1px solid #d0d0d0;
+            background-color: #f0f0f0;
+            font-weight: bold;
+            font-size: 1em;
+            color: #FFFFFF;
+            box-sizing: border-box;
+            position: relative;
+            --value: 1;
+            height: calc(25px + (var(--value) * 15px));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 768px) {
+            .left-pane {
+                display: none;
+            }
+
+            .right-pane {
+                width: 100%;
+                border-left: none;
+            }
+
+            #controls-container {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            #speed-range {
+                min-width: 150px;
+                max-width: 200px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #controls-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            #speed-range {
+                max-width: none;
+                width: 100%;
+            }
+
+            .number-squares {
+                gap: 4px;
+                margin-right: 8px;
+            }
+
+            .number-element,
+            .bar_item {
+                width: 32px;
+                font-size: 1em;
+            }
+
+            .number-element {
+                height: 32px;
+            }
+
+            .bar_item {
+                height: calc(20px + (var(--value) * 12px));
+            }
+
+            .execute-btn {
+                width: 32px;
+                height: 32px;
+                margin-right: 8px;
+            }
+
+            .execute-btn svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            .status-text {
+                font-size: 1em;
+                min-width: 50px;
+                line-height: 32px;
+            }
+
+            #sync_bar_graph_container {
+                min-height: 150px;
+            }
+
+            .bar_item {
+                width: 30px;
+                height: calc(18px + (var(--value) * 10px));
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="main">
+        <div class="left-pane">
+            <img src="quick.png" alt="quick" width="98%">
+        </div>
+        <div class="right-pane">
+            <div id="controls-container">
+                <button id="auto-run-button">実行</button>
+                <button id="reset-button">リセット</button>
+                <label for="speed-range">速度:</label>
+                <input type="range" id="speed-range" min="0.1" max="2.0" step="0.1" value="1.0">
+                <span id="speed-value-display">×1.0</span>
+            </div>
+            <div class="sort-module-wrapper">
+                <div id="sync_bar_graph_container">
+                    <div id="bar_items_wrapper">
+                    </div>
+                </div>
+                <div id="quicksort_main-app-container">
+                    <div id="quicksort_sort-container">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Global Shared State ---
+        let sharedInitialArray = [];
+
+        // --- Script: Quick Sort (Manual) ---
+        let quicksort_initialArray = [];
+        let quicksort_trueCurrentArray = [];
+        let quicksort_sortStateStack = [];
+        let quicksort_currentStepIndex = 0;
+        let quicksort_currentSystemPivotValue = null;
+        let quicksort_currentSystemPivotFinalIndex = -1;
+        let quicksort_currentSubArrayRange = null;
+        let quicksort_allPossibleOptionsForSelect = [];
+
+        const quicksort_sortContainer = document.getElementById('quicksort_sort-container');
+        const barGraphItemsWrapper = document.getElementById('bar_items_wrapper');
+
+        let quicksort_allStepInfoContainers = [];
+        let quicksort_allSelectElementsInRows = [];
+        let quicksort_allExecuteButtons = [];
+        let quicksort_allStatusTexts = [];
+
+        // --- Auto-run State ---
+        let isAutoRunning = false;
+        let autoRunTimerId = null;
+        const MIN_ACTUAL_DELAY = 100;
+        const MAX_ACTUAL_DELAY = 2000;
+        let currentSpeedDelay = 1000;
+
+        let autoPartitionSubState = null;
+        // autoPartitionSubState structure:
+        // {
+        //   range: { start: number, end: number },
+        //   pivotValue: number,
+        //   currentIndexBeingCompared: number,
+        //   isHighlightPhase: boolean,
+        //   comparedElementStates: { [index: number]: string }
+        // }
+
+        // --- DOM Elements for Controls ---
+        let autoRunButton, resetButton, speedRange, speedValueDisplay;
+
+
+        function renderBarGraph(arr, elementStates = []) {
+            if (barGraphItemsWrapper.children.length !== arr.length && arr.length > 0) {
+                barGraphItemsWrapper.innerHTML = '';
+                arr.forEach((value, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'bar_item';
+                    item.id = `bar_item-${index}`;
+                    barGraphItemsWrapper.appendChild(item);
+                });
+            } else if (arr.length === 0) {
+                barGraphItemsWrapper.innerHTML = '';
+                return;
+            }
+
+            arr.forEach((value, index) => {
+                const item = document.getElementById(`bar_item-${index}`);
+                if (!item) return;
+                item.textContent = value;
+                item.style.setProperty('--value', value);
+
+                const classesToRemove = Array.from(item.classList).filter(cls => cls.startsWith('state-'));
+                if (classesToRemove.length > 0) item.classList.remove(...classesToRemove);
+
+                if (elementStates && elementStates[index]) {
+                    item.classList.add(elementStates[index]);
+                } else if (arr.length > 0) {
+                    item.classList.add('state-default');
+                }
+            });
+        }
+
+        function quicksort_createSelectElement(id, value, optionsArray, stateClasses, isDisabled) {
+            const select = document.createElement('select');
+            select.id = id;
+            let currentClasses = stateClasses;
+            if (!currentClasses && isDisabled) currentClasses = 'state-default';
+            else if (!currentClasses && !isDisabled) currentClasses = 'state-interactive';
+
+            select.className = `number-element ${currentClasses}`;
+            select.disabled = isDisabled;
+
+            const stringValueToSelect = String(value);
+            const uniqueStringOptions = [...new Set(optionsArray.map(opt => String(opt)))];
+            const sortedOptions = uniqueStringOptions.sort((a, b) => Number(a) - Number(b));
+
+            if (value !== undefined && value !== null && value !== '' && !sortedOptions.includes(stringValueToSelect)) {
+                sortedOptions.push(stringValueToSelect);
+                sortedOptions.sort((a, b) => Number(a) - Number(b));
+            }
+
+            sortedOptions.forEach(optVal => {
+                const option = document.createElement('option');
+                option.value = String(optVal);
+                option.textContent = String(optVal);
+                select.appendChild(option);
+            });
+            select.value = stringValueToSelect;
+
+            if (select.value !== stringValueToSelect && select.options.length > 0) {
+                for (let i = 0; i < select.options.length; i++) {
+                    if (select.options[i].textContent === stringValueToSelect) {
+                        select.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            if (select.options.length === 0 && (value !== undefined && value !== null && value !== '')) {
+                const option = document.createElement('option');
+                option.value = stringValueToSelect;
+                option.textContent = stringValueToSelect;
+                select.appendChild(option);
+                select.value = stringValueToSelect;
+            }
+            return select;
+        }
+
+        function quicksort_generateRows() {
+            quicksort_sortContainer.innerHTML = '';
+            quicksort_allStepInfoContainers = [];
+            quicksort_allSelectElementsInRows = [];
+            quicksort_allExecuteButtons = [];
+            quicksort_allStatusTexts = [];
+            const numElements = quicksort_trueCurrentArray.length;
+
+            quicksort_allPossibleOptionsForSelect = [];
+            if (numElements > 0) {
+                const maxValInArray = Math.max(...quicksort_trueCurrentArray.map(n => Number(n)).filter(n => !isNaN(n)), 0);
+                for (let k = 1; k <= Math.max(10, maxValInArray); k++) {
+                    quicksort_allPossibleOptionsForSelect.push(String(k));
+                }
+                quicksort_trueCurrentArray.forEach(val => {
+                    if (!quicksort_allPossibleOptionsForSelect.includes(String(val))) {
+                        quicksort_allPossibleOptionsForSelect.push(String(val));
+                    }
+                });
+                quicksort_allPossibleOptionsForSelect.sort((a, b) => Number(a) - Number(b));
+            }
+
+            if (numElements === 0) {
+                const emptyMsgDiv = document.createElement('div');
+                emptyMsgDiv.className = 'empty-array-message';
+                emptyMsgDiv.textContent = "ソート対象のデータがありません。";
+                quicksort_sortContainer.appendChild(emptyMsgDiv);
+                renderBarGraph([], []);
+                return;
+            }
+
+            const initialDisplayContainer = document.createElement('div');
+            initialDisplayContainer.className = 'step-info-container visible initial-array-row';
+            const initialRowDiv = document.createElement('div');
+            initialRowDiv.className = 'step-row';
+            const initialSquaresDiv = document.createElement('div');
+            initialSquaresDiv.className = 'number-squares';
+            quicksort_initialArray.forEach((val, index) => {
+                const selectEl = quicksort_createSelectElement(`initial-el-${index}`, val, [String(val)], 'state-initial', true);
+                initialSquaresDiv.appendChild(selectEl);
+            });
+            initialRowDiv.appendChild(initialSquaresDiv);
+            initialDisplayContainer.appendChild(initialRowDiv);
+            quicksort_sortContainer.appendChild(initialDisplayContainer);
+
+            const maxPossibleSteps = numElements * numElements; // Increased for detailed comparison
+            for (let i = 0; i < maxPossibleSteps; i++) {
+                const stepContainer = document.createElement('div');
+                stepContainer.className = 'step-info-container';
+                quicksort_allStepInfoContainers[i] = stepContainer;
+
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'step-row';
+                const squaresDiv = document.createElement('div');
+                squaresDiv.className = 'number-squares';
+                const currentSelectsForRow = [];
+                for (let j = 0; j < numElements; j++) {
+                    const selectEl = quicksort_createSelectElement(`sel-${i}-${j}`, '', [], 'state-default', true);
+                    squaresDiv.appendChild(selectEl);
+                    currentSelectsForRow.push(selectEl);
+                }
+                quicksort_allSelectElementsInRows.push(currentSelectsForRow);
+                rowDiv.appendChild(squaresDiv);
+
+                const button = document.createElement('button');
+                button.className = 'execute-btn';
+                button.dataset.step = i;
+                button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>';
+                button.disabled = true;
+                button.addEventListener('click', quicksort_handleValidateAndProceedClick);
+                quicksort_allExecuteButtons[i] = button;
+                rowDiv.appendChild(button);
+
+                const statusSpan = document.createElement('span');
+                statusSpan.className = 'status-text';
+                quicksort_allStatusTexts[i] = statusSpan;
+                rowDiv.appendChild(statusSpan);
+
+                stepContainer.appendChild(rowDiv);
+                quicksort_sortContainer.appendChild(stepContainer);
+            }
+        }
+
+        function quicksort_compareElements(a, b) {
+            return Number(a) - Number(b);
+        }
+
+        function quicksort_performSystemPartitionAndGetPivotInfo(arr, low, high) {
+            let segment = arr.slice(low, high + 1);
+            if (segment.length === 0) return { pivotValue: null, finalGlobalIndex: -1, partitionedSystemResultSegment: [] };
+
+            const pivotValue = segment[0];
+            let smallerElements = [];
+            let largerOrEqualElements = [];
+
+            for (let k = 1; k < segment.length; k++) {
+                if (quicksort_compareElements(segment[k], pivotValue) < 0) {
+                    smallerElements.push(segment[k]);
+                } else {
+                    largerOrEqualElements.push(segment[k]);
+                }
+            }
+            const partitionedSegment = [...smallerElements, pivotValue, ...largerOrEqualElements];
+            const pivotFinalLocalIndex = smallerElements.length;
+            return {
+                pivotValue: pivotValue,
+                finalGlobalIndex: low + pivotFinalLocalIndex,
+                partitionedSystemResultSegment: partitionedSegment
+            };
+        }
+
+        function quicksort_processAndDisplayStep() { // Sets up UI for a new logical step
+            if (quicksort_sortStateStack.length === 0 &&
+                (quicksort_currentSubArrayRange === null || quicksort_currentSubArrayRange.start >= quicksort_currentSubArrayRange.end)) {
+                displayFinalSortedArray();
+                return;
+            }
+
+            if (quicksort_currentSubArrayRange === null || quicksort_currentSubArrayRange.start >= quicksort_currentSubArrayRange.end) {
+                if (quicksort_sortStateStack.length > 0) {
+                    const { start, end } = quicksort_sortStateStack.pop();
+                    quicksort_currentSubArrayRange = { start, end };
+                } else {
+                    displayFinalSortedArray(); // Should be caught earlier
+                    return;
+                }
+            }
+
+            const { start, end } = quicksort_currentSubArrayRange;
+
+            if (start >= end) { // Trivial range (single element or empty)
+                // Mark as confirmed if necessary visually (though logically it is)
+                if (start < quicksort_trueCurrentArray.length && quicksort_allSelectElementsInRows[quicksort_currentStepIndex] && quicksort_allSelectElementsInRows[quicksort_currentStepIndex][start]) {
+                    quicksort_allSelectElementsInRows[quicksort_currentStepIndex][start].className = 'number-element state-confirmed';
+                }
+                // For bar graph, mark elements in this range as confirmed.
+                const barStates = quicksort_trueCurrentArray.map((_, idx) =>
+                    idx >= start && idx <= end ? 'state-confirmed' : quicksort_getBarStateForElement(idx, -1, null, true, false)
+                );
+                renderBarGraph([...quicksort_trueCurrentArray], barStates);
+
+                quicksort_currentSubArrayRange = null; // Processed this trivial range
+                quicksort_processAndDisplayStep(); // Recurse to pop next or finalize
+                return;
+            }
+
+            if (quicksort_currentStepIndex >= quicksort_allStepInfoContainers.length) {
+                console.error("Max steps reached for UI display.");
+                displayFinalSortedArray();
+                return;
+            }
+
+            // For manual mode, we still need the system's intended pivot value and final index
+            const pivotInfo = quicksort_performSystemPartitionAndGetPivotInfo([...quicksort_trueCurrentArray], start, end);
+            quicksort_currentSystemPivotValue = pivotInfo.pivotValue; // This is arr[start]
+            quicksort_currentSystemPivotFinalIndex = pivotInfo.finalGlobalIndex;
+
+            const currentStepContainer = quicksort_allStepInfoContainers[quicksort_currentStepIndex];
+            currentStepContainer.classList.add('visible');
+
+            const selectsInRow = quicksort_allSelectElementsInRows[quicksort_currentStepIndex];
+            const currentSubArraySegmentForDisplay = quicksort_trueCurrentArray.slice(start, end + 1);
+            let optionsForSelects = [...new Set(currentSubArraySegmentForDisplay.map(String).concat(quicksort_allPossibleOptionsForSelect))].sort((a, b) => Number(a) - Number(b));
+
+            selectsInRow.forEach((selectEl, colIndex) => {
+                let displayValue = quicksort_trueCurrentArray[colIndex];
+                let isDisabled = true;
+                let currentSelectState = quicksort_getBarStateForElement(colIndex, -1, quicksort_currentSubArrayRange, false, colIndex === start);
+
+                if (colIndex >= start && colIndex <= end) {
+                    isDisabled = (colIndex === start);
+                }
+
+                const newSelect = quicksort_createSelectElement(selectEl.id, String(displayValue), optionsForSelects, currentSelectState, isDisabled);
+                selectEl.parentNode.replaceChild(newSelect, selectEl);
+                selectsInRow[colIndex] = newSelect;
+            });
+
+            const barGraphStatesForStep = quicksort_trueCurrentArray.map((val, idx) =>
+                quicksort_getBarStateForElement(idx, -1, quicksort_currentSubArrayRange, false, idx === start)
+            );
+            renderBarGraph([...quicksort_trueCurrentArray], barGraphStatesForStep);
+
+            if (quicksort_allExecuteButtons[quicksort_currentStepIndex]) quicksort_allExecuteButtons[quicksort_currentStepIndex].disabled = isAutoRunning;
+            if (quicksort_allStatusTexts[quicksort_currentStepIndex]) {
+                quicksort_allStatusTexts[quicksort_currentStepIndex].textContent = '';
+                quicksort_allStatusTexts[quicksort_currentStepIndex].className = 'status-text';
+            }
+        }
+
+
+        function quicksort_getBarStateForElement(index, currentPivotFinalIdxSystem, currentRange, isFinalizedSubArray, isCurrentOperationPivot) {
+            const elementValue = Number(quicksort_trueCurrentArray[index]);
+
+            if (isAutoRunning && autoPartitionSubState && autoPartitionSubState.range &&
+                index >= autoPartitionSubState.range.start && index <= autoPartitionSubState.range.end) {
+
+                if (index === autoPartitionSubState.range.start) {
+                    return 'state-fixed-pivot';
+                }
+                if (index === autoPartitionSubState.currentIndexBeingCompared) {
+                    if (autoPartitionSubState.isHighlightPhase) {
+                        return 'state-comparing-with-pivot';
+                    } else {
+                        return quicksort_compareElements(elementValue, autoPartitionSubState.pivotValue) < 0
+                            ? 'state-compare-smaller'
+                            : 'state-compare-larger';
+                    }
+                }
+                if (autoPartitionSubState.comparedElementStates && autoPartitionSubState.comparedElementStates[index]) {
+                    return autoPartitionSubState.comparedElementStates[index];
+                }
+                return 'state-interactive'; // Default for elements awaiting comparison in auto mode in this sub-array
+            }
+
+            if (isFinalizedSubArray) {
+                if (currentRange && index >= currentRange.start && index <= currentRange.end) {
+                    if (index === currentPivotFinalIdxSystem) {
+                        return 'state-fixed-pivot';
+                    }
+                    return 'state-confirmed';
+                }
+            } else {
+                if (currentRange && index >= currentRange.start && index <= currentRange.end) {
+                    if (isCurrentOperationPivot) {
+                        return 'state-fixed-pivot';
+                    }
+                    if (quicksort_currentSystemPivotValue !== null && !isNaN(elementValue) && !isNaN(quicksort_currentSystemPivotValue)) {
+                        if (quicksort_compareElements(elementValue, quicksort_currentSystemPivotValue) < 0) {
+                            return 'state-compare-smaller';
+                        } else {
+                            return 'state-compare-larger';
+                        }
+                    }
+                    return 'state-interactive';
+                }
+            }
+
+            // Fallback: Check if element is part of an already confirmed partition from *previous* logical steps.
+            // This requires checking against the `quicksort_sortStateStack` and `quicksort_currentSubArrayRange`
+            // to see if the element at `index` is NOT part of any future or current processing.
+            let isOutsideActiveProcessing = true;
+            if (quicksort_currentSubArrayRange && index >= quicksort_currentSubArrayRange.start && index <= quicksort_currentSubArrayRange.end && !isFinalizedSubArray) {
+                isOutsideActiveProcessing = false;
+            }
+            if (isOutsideActiveProcessing) {
+                for (const range of quicksort_sortStateStack) {
+                    if (index >= range.start && index <= range.end) {
+                        isOutsideActiveProcessing = false;
+                        break;
+                    }
+                }
+            }
+            if (isOutsideActiveProcessing && quicksort_currentStepIndex > 0) { // if not initial step and outside active zones
+                return 'state-confirmed';
+            }
+
+            return 'state-default';
+        }
+
+
+        function quicksort_handleValidateAndProceedClick(event) {
+            const button = event.currentTarget;
+            const stepIdxOfButton = parseInt(button.dataset.step);
+            if (stepIdxOfButton !== quicksort_currentStepIndex || isAutoRunning) return;
+
+            const statusText = quicksort_allStatusTexts[quicksort_currentStepIndex];
+            const selectsInCurrentRow = quicksort_allSelectElementsInRows[quicksort_currentStepIndex];
+            const { start, end } = quicksort_currentSubArrayRange;
+
+            const userPartitionedSegmentValues = [];
+            for (let i = start; i <= end; i++) {
+                userPartitionedSegmentValues.push(selectsInCurrentRow[i].value);
+            }
+
+            const originalSubArrayElementsSorted = quicksort_trueCurrentArray.slice(start, end + 1).map(String).sort(quicksort_compareElements);
+            const userSelectedElementsSorted = [...userPartitionedSegmentValues].map(String).sort(quicksort_compareElements);
+
+            let isValid = originalSubArrayElementsSorted.length === userSelectedElementsSorted.length &&
+                originalSubArrayElementsSorted.every((val, index) => val === userSelectedElementsSorted[index]);
+
+            if (isValid) {
+                const userPivotActualValueAtSystemFinalIndex = selectsInCurrentRow[quicksort_currentSystemPivotFinalIndex].value;
+                if (String(userPivotActualValueAtSystemFinalIndex) !== String(quicksort_currentSystemPivotValue)) {
+                    isValid = false;
+                } else {
+                    for (let i = start; i <= end; i++) {
+                        if (i === quicksort_currentSystemPivotFinalIndex) continue;
+                        const currentValueInUserArray = selectsInCurrentRow[i].value;
+                        if (i < quicksort_currentSystemPivotFinalIndex) {
+                            if (quicksort_compareElements(currentValueInUserArray, quicksort_currentSystemPivotValue) >= 0) {
+                                isValid = false; break;
+                            }
+                        } else {
+                            if (quicksort_compareElements(currentValueInUserArray, quicksort_currentSystemPivotValue) < 0) {
+                                isValid = false; break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (isValid) {
+                statusText.textContent = 'OK';
+                statusText.className = 'status-text status-ok';
+                button.disabled = true;
+
+                for (let i = start; i <= end; i++) {
+                    quicksort_trueCurrentArray[i] = Number(selectsInCurrentRow[i].value);
+                }
+
+                const finalBarStatesForThisStep = quicksort_trueCurrentArray.map((_, idx) =>
+                    quicksort_getBarStateForElement(idx, quicksort_currentSystemPivotFinalIndex, { start, end }, true, false)
+                );
+
+                selectsInCurrentRow.forEach((sel, idx) => {
+                    sel.disabled = true;
+                    const stateForSel = quicksort_getBarStateForElement(idx, quicksort_currentSystemPivotFinalIndex, { start, end }, true, false);
+                    sel.className = `number-element ${stateForSel}`;
+                });
+
+                renderBarGraph([...quicksort_trueCurrentArray], finalBarStatesForThisStep);
+
+                if (quicksort_currentSystemPivotFinalIndex + 1 <= end) {
+                    quicksort_sortStateStack.push({ start: quicksort_currentSystemPivotFinalIndex + 1, end: end });
+                }
+                if (start <= quicksort_currentSystemPivotFinalIndex - 1) {
+                    quicksort_sortStateStack.push({ start: start, end: quicksort_currentSystemPivotFinalIndex - 1 });
+                }
+
+                quicksort_currentSubArrayRange = null; // Clear current range, next processAndDisplayStep will pop.
+                quicksort_currentStepIndex++;
+                quicksort_processAndDisplayStep();
+
+            } else {
+                statusText.textContent = 'エラー';
+                statusText.className = 'status-text status-error';
+                const userAttemptArray = [...quicksort_trueCurrentArray];
+                const userAttemptBarStates = quicksort_trueCurrentArray.map((_, idx) =>
+                    quicksort_getBarStateForElement(idx, -1, quicksort_currentSubArrayRange, false, idx === start)
+                );
+
+                for (let i = start; i <= end; i++) {
+                    userAttemptArray[i] = Number(selectsInCurrentRow[i].value);
+                }
+                renderBarGraph(userAttemptArray, userAttemptBarStates);
+            }
+        }
+
+        function displayFinalSortedArray() {
+            const arrayLength = quicksort_trueCurrentArray.length;
+            let finalRowContainer;
+
+            if (quicksort_currentStepIndex < quicksort_allStepInfoContainers.length && quicksort_allStepInfoContainers[quicksort_currentStepIndex]) {
+                finalRowContainer = quicksort_allStepInfoContainers[quicksort_currentStepIndex];
+            } else if (quicksort_allStepInfoContainers.length > 0) {
+                finalRowContainer = quicksort_allStepInfoContainers[quicksort_allStepInfoContainers.length - 1];
+            } else {
+                finalRowContainer = document.createElement('div');
+                finalRowContainer.className = 'step-info-container';
+                quicksort_sortContainer.appendChild(finalRowContainer);
+            }
+            finalRowContainer.classList.add('visible');
+
+            if (arrayLength === 0) {
+                finalRowContainer.innerHTML = '<div class="empty-array-message status-complete">完了 (空の配列)</div>';
+                renderBarGraph([], []);
+            } else {
+                finalRowContainer.innerHTML = '';
+                const finalStepRow = document.createElement('div');
+                finalStepRow.className = 'step-row';
+                finalRowContainer.appendChild(finalStepRow);
+                const finalRowSquares = document.createElement('div');
+                finalRowSquares.className = 'number-squares';
+                finalStepRow.appendChild(finalRowSquares);
+                const finalElementStatesForBarGraph = [];
+                quicksort_trueCurrentArray.forEach((val, colIndex) => {
+                    const selectEl = quicksort_createSelectElement(`final-sel-${colIndex}`, val, [String(val)], 'state-final-display', true);
+                    finalRowSquares.appendChild(selectEl);
+                    finalElementStatesForBarGraph.push('state-final-display');
+                });
+                renderBarGraph([...quicksort_trueCurrentArray], finalElementStatesForBarGraph);
+                const finalStatus = document.createElement('span');
+                finalStatus.className = 'status-text status-complete';
+                finalStatus.textContent = '完了';
+                finalStepRow.appendChild(finalStatus);
+            }
+
+            if (isAutoRunning) pauseAutoRun();
+            if (autoRunButton) { autoRunButton.textContent = '実行'; autoRunButton.disabled = true; }
+            if (resetButton) resetButton.disabled = false;
+
+            for (let i = quicksort_currentStepIndex + 1; i < quicksort_allStepInfoContainers.length; i++) {
+                if (quicksort_allStepInfoContainers[i]) {
+                    quicksort_allStepInfoContainers[i].classList.remove('visible');
+                    quicksort_allStepInfoContainers[i].innerHTML = '';
+                }
+            }
+            autoPartitionSubState = null; // Ensure this is cleared on final display
+        }
+
+        function quicksort_initializeSortProcess() {
+            sharedInitialArray = [5, 2, 8, 7, 6, 10, 3, 4, 1, 9];
+
+            quicksort_initialArray = [...sharedInitialArray];
+            quicksort_trueCurrentArray = [...sharedInitialArray];
+            quicksort_sortStateStack = [];
+            quicksort_currentStepIndex = 0;
+            quicksort_currentSystemPivotValue = null;
+            quicksort_currentSystemPivotFinalIndex = -1;
+            quicksort_currentSubArrayRange = null;
+            autoPartitionSubState = null;
+
+
+            //const leftPane = document.querySelector('.left-pane');
+            //leftPane.innerHTML = '';
+
+            quicksort_generateRows();
+
+            const initialElementStates = quicksort_initialArray.map(() => 'state-initial');
+            renderBarGraph([...quicksort_initialArray], initialElementStates);
+
+            if (autoRunTimerId) clearTimeout(autoRunTimerId);
+            isAutoRunning = false;
+            if (autoRunButton) {
+                autoRunButton.textContent = '実行';
+                autoRunButton.disabled = (quicksort_initialArray.length <= 1);
+            }
+            if (resetButton) resetButton.disabled = false;
+
+            if (quicksort_initialArray.length === 0 || quicksort_initialArray.length === 1) {
+                displayFinalSortedArray();
+                return;
+            }
+
+            quicksort_sortStateStack.push({ start: 0, end: quicksort_initialArray.length - 1 });
+            quicksort_processAndDisplayStep();
+        }
+
+        function setupControls() {
+            autoRunButton = document.getElementById('auto-run-button');
+            resetButton = document.getElementById('reset-button');
+            speedRange = document.getElementById('speed-range');
+            speedValueDisplay = document.getElementById('speed-value-display');
+
+            const initialSliderValue = parseFloat(speedRange.value);
+            const baseDelayFor1X = 1000;
+            currentSpeedDelay = initialSliderValue === 0 ? MAX_ACTUAL_DELAY : baseDelayFor1X / initialSliderValue;
+            currentSpeedDelay = Math.max(MIN_ACTUAL_DELAY, Math.min(MAX_ACTUAL_DELAY, currentSpeedDelay));
+            speedValueDisplay.textContent = `×${initialSliderValue.toFixed(1)}`;
+
+            autoRunButton.addEventListener('click', () => {
+                if (isAutoRunning) {
+                    pauseAutoRun();
+                } else {
+                    startAutoRun();
+                }
+            });
+            resetButton.addEventListener('click', resetApp);
+            speedRange.addEventListener('input', () => {
+                const sliderValue = parseFloat(speedRange.value);
+                currentSpeedDelay = sliderValue === 0 ? MAX_ACTUAL_DELAY : baseDelayFor1X / sliderValue;
+                currentSpeedDelay = Math.max(MIN_ACTUAL_DELAY, Math.min(MAX_ACTUAL_DELAY, currentSpeedDelay));
+                speedValueDisplay.textContent = `×${sliderValue.toFixed(1)}`;
+                if (isAutoRunning) { // Adjust current animation speed
+                    clearTimeout(autoRunTimerId);
+                    autoRunTimerId = setTimeout(executeNextAutoStep, currentSpeedDelay);
+                }
+            });
+        }
+
+        function resetApp() {
+            pauseAutoRun(); // Clears autoPartitionSubState via pauseAutoRun -> executeNextAutoStep logic or directly
+            autoPartitionSubState = null;
+            quicksort_initializeSortProcess(); // Resets all sort-specific states
+
+            // Controls are re-enabled/disabled in quicksort_initializeSortProcess
+            // Reset speed slider and display
+            speedRange.value = "1.0";
+            const defaultMultiplier = parseFloat(speedRange.value);
+            const baseDelayFor1X = 1000;
+            currentSpeedDelay = baseDelayFor1X / defaultMultiplier;
+            currentSpeedDelay = Math.max(MIN_ACTUAL_DELAY, Math.min(MAX_ACTUAL_DELAY, currentSpeedDelay));
+            speedValueDisplay.textContent = `×${defaultMultiplier.toFixed(1)}`;
+        }
+
+        function startAutoRun() {
+            // Check if sort is already complete
+            if (quicksort_sortStateStack.length === 0 &&
+                (quicksort_currentSubArrayRange === null || quicksort_currentSubArrayRange.start >= quicksort_currentSubArrayRange.end) &&
+                quicksort_currentStepIndex > 0 && // Ensure it's not the initial state
+                !autoPartitionSubState) { // And not in the middle of a sub-partition
+                autoRunButton.disabled = true;
+                return;
+            }
+
+            isAutoRunning = true;
+            autoRunButton.textContent = '一時停止';
+            resetButton.disabled = true;
+            quicksort_allExecuteButtons.forEach(btn => { if (btn) btn.disabled = true; });
+
+            // If resuming from a paused comparison animation, or starting fresh
+            executeNextAutoStep();
+        }
+
+        function pauseAutoRun() {
+            isAutoRunning = false;
+            clearTimeout(autoRunTimerId);
+            autoRunButton.textContent = '実行';
+            resetButton.disabled = false;
+
+            // Re-enable manual step button if applicable and not in auto-compare animation
+            if (!autoPartitionSubState &&
+                quicksort_currentStepIndex < quicksort_allExecuteButtons.length &&
+                quicksort_allExecuteButtons[quicksort_currentStepIndex] &&
+                quicksort_currentSubArrayRange && quicksort_currentSubArrayRange.start < quicksort_currentSubArrayRange.end) {
+                quicksort_allExecuteButtons[quicksort_currentStepIndex].disabled = false;
+            }
+            // autoPartitionSubState is NOT cleared here, so resume can pick up if needed.
+            // It's cleared on reset, completion, or when a logical step finishes.
+        }
+
+        function executeNextAutoStep() {
+            if (!isAutoRunning) return;
+
+            if (autoPartitionSubState) {
+                if (autoPartitionSubState.isHighlightPhase) {
+                    autoPartitionSubState.isHighlightPhase = false;
+                    renderCurrentAutoCompareStepVisuals();
+                    autoRunTimerId = setTimeout(executeNextAutoStep, Math.max(50, currentSpeedDelay / 2));
+                } else {
+                    const prevComparedIdx = autoPartitionSubState.currentIndexBeingCompared;
+                    if (prevComparedIdx >= autoPartitionSubState.range.start && prevComparedIdx <= autoPartitionSubState.range.end && prevComparedIdx !== autoPartitionSubState.range.start) {
+                        const val = Number(quicksort_trueCurrentArray[prevComparedIdx]);
+                        autoPartitionSubState.comparedElementStates[prevComparedIdx] =
+                            quicksort_compareElements(val, autoPartitionSubState.pivotValue) < 0
+                                ? 'state-compare-smaller'
+                                : 'state-compare-larger';
+                    }
+                    autoPartitionSubState.currentIndexBeingCompared++;
+                    if (autoPartitionSubState.currentIndexBeingCompared > autoPartitionSubState.range.end) {
+                        finalizeAutoPartitionAndProceedToNextLogicalStep();
+                    } else {
+                        autoPartitionSubState.isHighlightPhase = true;
+                        renderCurrentAutoCompareStepVisuals();
+                        autoRunTimerId = setTimeout(executeNextAutoStep, currentSpeedDelay);
+                    }
+                }
+            } else { // No active sub-partition, start new logical step or comparison
+                if (quicksort_sortStateStack.length === 0 &&
+                    (quicksort_currentSubArrayRange === null || quicksort_currentSubArrayRange.start >= quicksort_currentSubArrayRange.end)) {
+                    quicksort_processAndDisplayStep(); // Should call displayFinalSortedArray
+                    return;
+                }
+
+                if (!quicksort_currentSubArrayRange || quicksort_currentSubArrayRange.start >= quicksort_currentSubArrayRange.end) {
+                    quicksort_processAndDisplayStep(); // Advances logical step
+                    if (isAutoRunning) autoRunTimerId = setTimeout(executeNextAutoStep, currentSpeedDelay);
+                    return;
+                }
+
+                const { start, end } = quicksort_currentSubArrayRange;
+                const pivotActualValue = Number(quicksort_trueCurrentArray[start]);
+
+                autoPartitionSubState = {
+                    range: { start, end },
+                    pivotValue: pivotActualValue,
+                    currentIndexBeingCompared: start === end ? -1 : start + 1,
+                    isHighlightPhase: true,
+                    comparedElementStates: {}
+                };
+
+                // Visually update current logical step UI elements for the start of this auto-partition
+                if (quicksort_allSelectElementsInRows[quicksort_currentStepIndex] && quicksort_allStatusTexts[quicksort_currentStepIndex]) {
+                    const selectsInCurrentStepRow = quicksort_allSelectElementsInRows[quicksort_currentStepIndex];
+                    selectsInCurrentStepRow.forEach((sel, idx) => {
+                        sel.disabled = true; // Disable all selects in auto mode step
+                        const stateClass = quicksort_getBarStateForElement(idx, -1, autoPartitionSubState.range, false, idx === start);
+                        sel.className = `number-element ${stateClass}`;
+                    });
+                    /*quicksort_allStatusTexts[quicksort_currentStepIndex].textContent = '比較中...';
+                    quicksort_allStatusTexts[quicksort_currentStepIndex].className = 'status-text'; // Neutral color*/
+                }
+
+
+                if (autoPartitionSubState.currentIndexBeingCompared === -1 || autoPartitionSubState.currentIndexBeingCompared > end) {
+                    finalizeAutoPartitionAndProceedToNextLogicalStep();
+                } else {
+                    renderCurrentAutoCompareStepVisuals();
+                    autoRunTimerId = setTimeout(executeNextAutoStep, currentSpeedDelay);
+                }
+            }
+        }
+
+        function renderCurrentAutoCompareStepVisuals() {
+            if (!autoPartitionSubState) return;
+            const barStates = quicksort_trueCurrentArray.map((val, idx) =>
+                quicksort_getBarStateForElement(idx, -1, autoPartitionSubState.range, false, idx === autoPartitionSubState.range.start)
+            );
+            renderBarGraph([...quicksort_trueCurrentArray], barStates);
+
+            if (quicksort_allSelectElementsInRows[quicksort_currentStepIndex]) {
+                const selectsInCurrentStepRow = quicksort_allSelectElementsInRows[quicksort_currentStepIndex];
+                selectsInCurrentStepRow.forEach((selectEl, idx) => {
+                    const stateClass = quicksort_getBarStateForElement(idx, -1, autoPartitionSubState.range, false, idx === autoPartitionSubState.range.start);
+                    selectEl.className = `number-element ${stateClass}`;
+                });
+            }
+        }
+
+        function finalizeAutoPartitionAndProceedToNextLogicalStep() {
+            if (!autoPartitionSubState) return;
+            const { start, end } = autoPartitionSubState.range;
+            const systemPartitionInfo = quicksort_performSystemPartitionAndGetPivotInfo([...quicksort_trueCurrentArray], start, end);
+
+            for (let i = 0; i < systemPartitionInfo.partitionedSystemResultSegment.length; i++) {
+                quicksort_trueCurrentArray[start + i] = Number(systemPartitionInfo.partitionedSystemResultSegment[i]);
+            }
+            quicksort_currentSystemPivotValue = systemPartitionInfo.pivotValue;
+            quicksort_currentSystemPivotFinalIndex = systemPartitionInfo.finalGlobalIndex;
+
+            autoPartitionSubState = null; // Clear sub-state
+
+            const stepIdxToFinalize = quicksort_currentStepIndex;
+            const selectsInFinalizingRow = quicksort_allSelectElementsInRows[stepIdxToFinalize];
+            if (selectsInFinalizingRow) {
+                selectsInFinalizingRow.forEach((selectEl, colIndex) => {
+                    selectEl.value = String(quicksort_trueCurrentArray[colIndex]);
+                    selectEl.disabled = true;
+                    const stateClass = quicksort_getBarStateForElement(colIndex, quicksort_currentSystemPivotFinalIndex, { start, end }, true, false);
+                    selectEl.className = `number-element ${stateClass}`;
+                });
+            }
+            if (quicksort_allStatusTexts[stepIdxToFinalize]) {
+                quicksort_allStatusTexts[stepIdxToFinalize].textContent = 'OK';
+                quicksort_allStatusTexts[stepIdxToFinalize].className = 'status-text status-ok';
+            }
+            if (quicksort_allExecuteButtons[stepIdxToFinalize]) {
+                quicksort_allExecuteButtons[stepIdxToFinalize].disabled = true;
+            }
+
+            const barStatesAfterSystemPartition = quicksort_trueCurrentArray.map((val, idx) =>
+                quicksort_getBarStateForElement(idx, quicksort_currentSystemPivotFinalIndex, { start, end }, true, false)
+            );
+            renderBarGraph([...quicksort_trueCurrentArray], barStatesAfterSystemPartition);
+
+            if (quicksort_currentSystemPivotFinalIndex + 1 <= end) {
+                quicksort_sortStateStack.push({ start: quicksort_currentSystemPivotFinalIndex + 1, end: end });
+            }
+            if (start <= quicksort_currentSystemPivotFinalIndex - 1) {
+                quicksort_sortStateStack.push({ start: start, end: quicksort_currentSystemPivotFinalIndex - 1 });
+            }
+
+            quicksort_currentSubArrayRange = null; // This logical step is done.
+            quicksort_currentStepIndex++;
+            quicksort_processAndDisplayStep();
+
+            if (isAutoRunning) {
+                if (quicksort_sortStateStack.length === 0 &&
+                    (quicksort_currentSubArrayRange === null || quicksort_currentSubArrayRange.start >= quicksort_currentSubArrayRange.end)) {
+                    // Sort is complete
+                } else {
+                    autoRunTimerId = setTimeout(executeNextAutoStep, currentSpeedDelay);
+                }
+            }
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupControls();
+            quicksort_initializeSortProcess();
+        });
+    </script>
+</body>
+
+</html>

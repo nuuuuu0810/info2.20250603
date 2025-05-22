@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>マージソート ランダム</title>
+    <style>
+        html,
+        body {
+            height: 100%;
+            /* 高さを100%にする */
+            margin: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            /* 基本フォントを適用 */
+        }
+
+        body {
+            display: flex;
+            /* body直下に#mainがくるようにする */
+            min-height: 100vh;
+            /* 画面全体の高さを確保 */
+        }
+
+        #main {
+            display: flex;
+            width: 100%;
+            /* 全幅を使用 */
+            height: 100%;
+            /* 高さいっぱいに広がるように */
+        }
+
+        .left-pane {
+            width: 55%;
+            padding: 20px;
+            box-sizing: border-box;
+            border-right: 1px solid #FFF;
+            background-color: #FFFFFF;
+            overflow-y: auto;
+        }
+
+
+        .right-pane {
+            width: 45%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            overflow-y: auto;
+            /* コンテンツが多い場合にスクロール */
+            height: 100%;
+            /* #mainのheightを継承 */
+        }
+
+        /* ▼▼▼ここから埋め込みコードのスタイル (body以外) ▼▼▼ */
+        #main-app-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* 中の要素を中央揃え */
+            background-color: #ffffff;
+            padding: 25px;
+            /* メイン枠の内側の余白 */
+            border-radius: 8px;
+            width: auto;
+            width: 650px;
+            box-sizing: border-box;
+            max-width: 100%;
+            height: 95vh;
+        }
+
+        #controls-container {
+            display: flex;
+            flex-direction: row;
+            /* Horizontal layout for desktop */
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 25px;
+            /* sort-containerとの間隔 */
+            width: 100%;
+            /* main-app-containerの幅に合わせる */
+            box-sizing: border-box;
+        }
+
+        .settings-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            /* Gap between control rows */
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-row label:first-child {
+            min-width: 55px;
+            text-align: right;
+            margin-right: 5px;
+            font-size: 0.95em;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .radio-group label {
+            margin-right: 0;
+            font-size: 0.95em;
+            display: flex;
+            align-items: center;
+        }
+
+        .radio-group input[type="radio"] {
+            margin-right: 4px;
+        }
+
+        #reset-button {
+            background-color: #2ecc40;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 0.9em;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            white-space: nowrap;
+            height: fit-content;
+        }
+
+        #reset-button:hover {
+            background-color: #27ae60;
+            /* Darker green on hover */
+        }
+
+        #array-size-slider {
+            width: 100px;
+        }
+
+        #array-size-value {
+            min-width: 20px;
+            text-align: left;
+            font-size: 0.95em;
+        }
+
+        #sort-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            /* main-app-containerの幅に合わせる */
+            box-sizing: border-box;
+        }
+
+        .step-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0;
+            justify-content: flex-start;
+            min-height: 45px;
+            opacity: 1;
+            visibility: visible;
+            height: auto;
+            transition: opacity 0.5s ease-in-out, visibility 0s linear 0s, height 0.5s ease-in-out, margin-bottom 0.5s ease-in-out;
+            position: relative;
+            box-sizing: border-box;
+            padding: 0;
+            width: 100%;
+        }
+
+        .step-row:not(.visible) {
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+            visibility: hidden;
+            pointer-events: none;
+            margin-bottom: 0;
+            transition: opacity 0.3s ease-out, height 0.3s ease-out, margin-bottom 0.3s ease-out, visibility 0s linear 0.3s;
+        }
+
+        .step-row.visible {
+            opacity: 1;
+            height: auto;
+            margin-bottom: 4px;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .initial-array-row.visible {
+            margin-bottom: 8px;
+        }
+
+        .number-squares {
+            display: flex;
+            gap: 6px;
+            margin-right: 10px;
+            flex-wrap: nowrap;
+            /* Prevent wrapping to next line */
+            overflow-x: auto;
+            /* Allow horizontal scroll if too many items */
+            padding-bottom: 5px;
+            /* Space for scrollbar if it appears */
+        }
+
+        .number-element {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            cursor: default;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            text-align: center;
+            text-align-last: center;
+        }
+
+        .number-element option {
+            background-color: white;
+            color: black;
+        }
+
+        /* Merge Sort States */
+        .number-element.state-interactive-to-merge {
+            /* Elements in the range to be merged by the user */
+            background-color: #FFF352;
+            /* Light Yellow */
+            border-color: #E6DB4A;
+            color: #333;
+            cursor: pointer;
+        }
+
+        .number-element.state-part-of-merged {
+            /* Elements that are part of a correctly merged segment in the current pass */
+            background-color: #8CE3FE;
+            /* Light Blue */
+            border-color: #7bc8e2;
+        }
+
+        .number-element.state-untouched-this-pass {
+            /* Default for elements not part of active merge operation for this pass */
+            background-color: #cccccc;
+            /* Neutral gray */
+            border-color: #b3b3b3;
+        }
+
+        .number-element.state-untouched-this-pass:disabled {
+            background-color: #cccccc;
+            border-color: #b3b3b3;
+        }
+
+        .number-element.state-final-orange {
+            /* Final sorted array elements */
+            background-color: #FFC107;
+            border-color: #FFA000;
+            color: black;
+            font-weight: bold;
+        }
+
+
+        .number-element:disabled {
+            opacity: 1;
+            /* Keep fully visible */
+            cursor: default;
+        }
+
+        /* Ensure select arrow doesn't show when disabled and styled as a block */
+        .number-element:disabled::-ms-expand {
+            display: none;
+        }
+
+
+        .execute-btn {
+            background-color: #212121;
+            color: white;
+            border: 1px solid #000;
+            width: 38px;
+            height: 38px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            transition: background-color 0.2s ease;
+            padding: 0;
+            flex-shrink: 0;
+            cursor: pointer;
+            margin-right: 12px;
+            /* Space before status text if any */
+        }
+
+        .execute-btn svg {
+            fill: white;
+            width: 16px;
+            height: 16px;
+            display: block;
+        }
+
+        .execute-btn:disabled {
+            background-color: #666666;
+            border-color: #555555;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .execute-btn:disabled svg {
+            fill: #cccccc;
+        }
+
+        .status-text {
+            font-size: 1.0em;
+            font-weight: bold;
+            min-width: 60px;
+            /* Adjusted for "エラー" or "完了" */
+            text-align: left;
+            line-height: 40px;
+            /* Align with number-elements */
+            flex-shrink: 0;
+        }
+
+        .status-ok {
+            color: #2ecc40;
+        }
+
+        /* Green for OK - 追加 */
+        .status-error {
+            color: #ff4136;
+        }
+
+        /* Red for error */
+        .status-complete {
+            color: #2ecc40;
+        }
+
+        /* Green for complete */
+
+
+        .initial-array-row .number-element {
+            /* Initial array display before any steps */
+            background-color: #FFC107;
+            border-color: #FFA000;
+            color: black;
+            font-weight: bold;
+        }
+
+        .empty-array-message {
+            padding: 10px;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #555;
+            width: 100%;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 580px) {
+
+            /* Breakpoint for controls layout */
+            #main-app-container {
+                padding: 15px;
+                max-width: 95%;
+            }
+
+            #controls-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .settings-group {
+                align-items: center;
+                width: 100%;
+            }
+
+            .control-row {
+                justify-content: center;
+                width: 100%;
+            }
+
+            .control-row label:first-child {
+                text-align: left;
+                min-width: auto;
+                margin-right: 10px;
+            }
+
+            .radio-group {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            #reset-button {
+                width: 100%;
+                margin-top: 15px;
+                padding: 10px 15px;
+                font-size: 1em;
+            }
+        }
+
+        @media (max-width: 480px) {
+
+            /* Breakpoint for smaller elements */
+            .number-squares {
+                gap: 4px;
+                margin-right: 8px;
+            }
+
+            .number-element {
+                width: 32px;
+                height: 32px;
+                font-size: 1em;
+            }
+
+            .execute-btn {
+                width: 32px;
+                height: 32px;
+                margin-right: 8px;
+            }
+
+            .execute-btn svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            .status-text {
+                font-size: 1em;
+                min-width: 50px;
+                line-height: 32px;
+            }
+        }
+
+        /* ▲▲▲ここまで埋め込みコードのスタイル ▲▲▲ */
+    </style>
+</head>
+
+<body>
+    <div id="main">
+        <div class="left-pane">
+            <img src="merge.png" alt="merge" width="98%">
+        </div>
+        <div class="right-pane">
+            <!-- ▼▼▼ここから埋め込みコードのbody部分▼▼▼ -->
+            <div id="main-app-container">
+                <div id="controls-container">
+                    <div class="settings-group">
+                        <div class="control-row">
+                            <label for="array-size-slider">要素数:</label>
+                            <input type="range" id="array-size-slider" min="5" max="10" value="7">
+                            <span id="array-size-value">7</span>
+                        </div>
+                        <div class="control-row">
+                            <label>文字種:</label>
+                            <div class="radio-group">
+                                <label><input type="radio" name="char-type" value="numbers" checked> 数字</label>
+                                <label><input type="radio" name="char-type" value="alphabets"> ABC</label>
+                                <label><input type="radio" name="char-type" value="hiragana"> あいう</label>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="reset-button">更新して開始</button>
+                </div>
+
+                <div id="sort-container">
+                    <!-- JavaScript will populate this area -->
+                </div>
+            </div>
+
+            <script>
+                'use strict';
+                let initialArray = [];
+                let currentArray = [];
+                let mergeSteps = [];
+                let currentStepIndex = 0;
+                let selectedCharType = 'numbers';
+                let allPossibleOptionsForSelect = [];
+
+                const sortContainer = document.getElementById('sort-container');
+                let allRowsElements = [];
+                let allNumberElementsInRows = [];
+                let allExecuteButtons = [];
+                let allStatusTexts = [];
+
+                const arraySizeSlider = document.getElementById('array-size-slider');
+                const arraySizeValueDisplay = document.getElementById('array-size-value');
+                const resetButton = document.getElementById('reset-button');
+                const charTypeRadios = document.querySelectorAll('input[name="char-type"]');
+
+                function generateRandomArray(size, type) {
+                    const arr = new Set();
+                    let sourceChars;
+
+                    if (type === 'numbers') {
+                        while (arr.size < size) {
+                            arr.add(Math.floor(Math.random() * 90) + 10);
+                        }
+                    } else if (type === 'alphabets') {
+                        sourceChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                        while (arr.size < size) {
+                            arr.add(sourceChars.charAt(Math.floor(Math.random() * sourceChars.length)));
+                        }
+                    } else if (type === 'hiragana') {
+                        sourceChars = "あいうえおかきくけこさしすせそたちつてとなにぬねの";
+                        if (size > sourceChars.length) {
+                            console.warn("Requested size for hiragana is larger than unique source characters. Duplicates possible.");
+                            let tempArr = [];
+                            for (let i = 0; i < size; i++) {
+                                tempArr.push(sourceChars.charAt(i % sourceChars.length));
+                            }
+                            for (let i = tempArr.length - 1; i > 0; i--) {
+                                const j = Math.floor(Math.random() * (i + 1));
+                                [tempArr[i], tempArr[j]] = [tempArr[j], tempArr[i]];
+                            }
+                            return tempArr;
+                        }
+                        while (arr.size < size) {
+                            arr.add(sourceChars.charAt(Math.floor(Math.random() * sourceChars.length)));
+                        }
+                    }
+                    return Array.from(arr);
+                }
+
+                function generateMergeSteps(arrayLength) {
+                    const steps = [];
+                    const n = arrayLength;
+                    if (n <= 1) return [];
+
+                    for (let sz = 1; sz < n; sz = sz * 2) {
+                        for (let lo = 0; lo < n - sz; lo += sz * 2) {
+                            const mid = lo + sz - 1;
+                            const hi = Math.min(lo + sz + sz - 1, n - 1);
+                            steps.push({ lo, mid, hi });
+                        }
+                    }
+                    return steps;
+                }
+
+                function mergeTwoSortedArrays(arr1, arr2, charType) {
+                    const merged = [];
+                    let i = 0, j = 0;
+                    const comparisonFn = (a, b) => {
+                        if (charType === 'numbers') {
+                            return Number(a) - Number(b);
+                        }
+                        return String(a).localeCompare(String(b), 'ja');
+                    };
+
+                    while (i < arr1.length && j < arr2.length) {
+                        if (comparisonFn(arr1[i], arr2[j]) <= 0) {
+                            merged.push(arr1[i++]);
+                        } else {
+                            merged.push(arr2[j++]);
+                        }
+                    }
+                    while (i < arr1.length) merged.push(arr1[i++]);
+                    while (j < arr2.length) merged.push(arr2[j++]);
+                    return merged;
+                }
+
+
+                function createSelectElement(id, value, optionsArray, stateClasses, isDisabled) {
+                    const select = document.createElement('select');
+                    select.id = id;
+                    select.className = `number-element ${stateClasses}`;
+                    select.disabled = isDisabled;
+                    const stringValueToSelect = String(value);
+
+                    const uniqueSortedOptions = [...new Set(optionsArray)].sort((a, b) => {
+                        if (selectedCharType === 'numbers') {
+                            const numA = Number(a); const numB = Number(b);
+                            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                        }
+                        return String(a).localeCompare(String(b), 'ja');
+                    });
+
+                    if (!uniqueSortedOptions.map(String).includes(stringValueToSelect) && (value !== undefined && value !== null && value !== '')) {
+                        uniqueSortedOptions.push(value);
+                        uniqueSortedOptions.sort((a, b) => {
+                            if (selectedCharType === 'numbers') {
+                                const numA = Number(a); const numB = Number(b);
+                                if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                            }
+                            return String(a).localeCompare(String(b), 'ja');
+                        });
+                    }
+
+                    uniqueSortedOptions.forEach(optVal => {
+                        const option = document.createElement('option');
+                        const stringOptVal = String(optVal);
+                        option.value = stringOptVal;
+                        option.textContent = stringOptVal;
+                        select.appendChild(option);
+                    });
+
+                    select.value = stringValueToSelect;
+
+                    if (select.value !== stringValueToSelect && select.options.length > 0) {
+                        for (let i = 0; i < select.options.length; i++) {
+                            if (select.options[i].textContent === stringValueToSelect) {
+                                select.selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                    if (select.options.length === 0 && (value !== undefined && value !== null && value !== '')) {
+                        const option = document.createElement('option');
+                        option.value = stringValueToSelect;
+                        option.textContent = stringValueToSelect;
+                        select.appendChild(option);
+                        select.value = stringValueToSelect;
+                    }
+                    return select;
+                }
+
+                function generateRows(numSteps) {
+                    sortContainer.innerHTML = '';
+                    allRowsElements = [];
+                    allNumberElementsInRows = [];
+                    allExecuteButtons = [];
+                    allStatusTexts = [];
+
+                    const numElements = initialArray.length;
+
+                    if (numElements > 0) {
+                        const initialDisplayRowDiv = document.createElement('div');
+                        initialDisplayRowDiv.className = 'step-row visible initial-array-row';
+                        const initialSquaresDiv = document.createElement('div');
+                        initialSquaresDiv.className = 'number-squares';
+                        initialArray.forEach((val, index) => {
+                            const isFinal = numSteps === 0;
+                            const selectEl = createSelectElement(
+                                `initial-el-${index}`, val, [val], isFinal ? 'state-final-orange' : '', true
+                            );
+                            initialSquaresDiv.appendChild(selectEl);
+                        });
+                        initialDisplayRowDiv.appendChild(initialSquaresDiv);
+
+                        if (numSteps === 0) {
+                            const statusSpan = document.createElement('span');
+                            statusSpan.className = 'status-text status-complete';
+                            statusSpan.textContent = '完了';
+                            initialDisplayRowDiv.appendChild(statusSpan);
+                        }
+                        sortContainer.appendChild(initialDisplayRowDiv);
+                    } else {
+                        const emptyMsgDiv = document.createElement('div');
+                        emptyMsgDiv.className = 'empty-array-message visible';
+                        emptyMsgDiv.textContent = "完了 (空)";
+                        sortContainer.appendChild(emptyMsgDiv);
+                        return;
+                    }
+
+                    for (let i = 0; i < numSteps; i++) {
+                        const rowDiv = document.createElement('div');
+                        rowDiv.className = 'step-row';
+                        rowDiv.id = `step-row-${i}`;
+
+                        const squaresDiv = document.createElement('div');
+                        squaresDiv.className = 'number-squares';
+                        const currentNumberElementsForRow = [];
+                        for (let j = 0; j < numElements; j++) {
+                            const selectEl = createSelectElement(`el-${i}-${j}`, '', [], 'state-untouched-this-pass', true);
+                            squaresDiv.appendChild(selectEl);
+                            currentNumberElementsForRow.push(selectEl);
+                        }
+                        allNumberElementsInRows.push(currentNumberElementsForRow);
+                        rowDiv.appendChild(squaresDiv);
+
+                        const button = document.createElement('button');
+                        button.className = 'execute-btn';
+                        button.dataset.stepIndex = i;
+                        button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>';
+                        button.disabled = true;
+                        button.addEventListener('click', handleExecute);
+                        allExecuteButtons[i] = button;
+                        rowDiv.appendChild(button);
+
+                        const statusSpan = document.createElement('span');
+                        statusSpan.className = 'status-text';
+                        statusSpan.id = `status-${i}`;
+                        allStatusTexts[i] = statusSpan;
+                        rowDiv.appendChild(statusSpan);
+
+                        sortContainer.appendChild(rowDiv);
+                        allRowsElements.push(rowDiv);
+                    }
+                }
+
+                function prepareStepUI(stepIdx, arrayToDisplay) {
+                    if (stepIdx >= mergeSteps.length || stepIdx < 0) return;
+
+                    const currentRowElement = allRowsElements[stepIdx];
+                    currentRowElement.classList.add('visible');
+
+                    const mergeOp = mergeSteps[stepIdx];
+                    const { lo, mid, hi } = mergeOp;
+
+                    const currentSelectsInRow = allNumberElementsInRows[stepIdx];
+
+                    currentSelectsInRow.forEach((selectEl, colIndex) => {
+                        let value = arrayToDisplay[colIndex];
+                        let optionsSource = [value];
+                        let isDisabled = true;
+                        let stateClasses = 'state-untouched-this-pass';
+
+                        if (colIndex >= lo && colIndex <= hi) {
+                            isDisabled = false;
+                            optionsSource = allPossibleOptionsForSelect;
+                            stateClasses = 'state-interactive-to-merge';
+                        }
+
+                        const newSelectEl = createSelectElement(
+                            selectEl.id, value, optionsSource, stateClasses, isDisabled
+                        );
+                        selectEl.parentNode.replaceChild(newSelectEl, selectEl);
+                        currentSelectsInRow[colIndex] = newSelectEl;
+                    });
+
+                    if (allExecuteButtons[stepIdx]) {
+                        allExecuteButtons[stepIdx].disabled = false;
+                    }
+                    if (allStatusTexts[stepIdx]) {
+                        allStatusTexts[stepIdx].textContent = '';
+                        allStatusTexts[stepIdx].className = 'status-text';
+                    }
+                }
+
+                function displayFinalSortedState(finalArray, lastStepRowIndex) {
+                    if (lastStepRowIndex < 0 || lastStepRowIndex >= allNumberElementsInRows.length) {
+                        return;
+                    }
+
+                    const finalRowSelects = allNumberElementsInRows[lastStepRowIndex];
+                    if (finalRowSelects) {
+                        finalRowSelects.forEach((select, colIndex) => {
+                            const finalValue = finalArray[colIndex];
+                            const newSelectEl = createSelectElement(
+                                select.id, finalValue, [finalValue], 'state-final-orange', true
+                            );
+                            select.parentNode.replaceChild(newSelectEl, select);
+                            allNumberElementsInRows[lastStepRowIndex][colIndex] = newSelectEl;
+                        });
+                    }
+                    if (allStatusTexts[lastStepRowIndex]) {
+                        allStatusTexts[lastStepRowIndex].textContent = '完了';
+                        allStatusTexts[lastStepRowIndex].className = 'status-text status-complete';
+                    }
+                    if (allExecuteButtons[lastStepRowIndex]) {
+                        allExecuteButtons[lastStepRowIndex].disabled = true;
+                    }
+                }
+
+
+                function handleExecute(event) {
+                    const button = event.currentTarget;
+                    const stepIdxOfButton = parseInt(button.dataset.stepIndex);
+
+                    if (stepIdxOfButton !== currentStepIndex) return;
+
+                    const currentStatusText = allStatusTexts[currentStepIndex];
+
+                    const mergeOp = mergeSteps[currentStepIndex];
+                    const { lo, mid, hi } = mergeOp;
+
+                    const userSelectedValuesInMergeRange = [];
+                    const selectsInCurrentRow = allNumberElementsInRows[currentStepIndex];
+
+                    for (let i = lo; i <= hi; i++) {
+                        const val = selectsInCurrentRow[i].value;
+                        userSelectedValuesInMergeRange.push(selectedCharType === 'numbers' ? Number(val) : val);
+                    }
+
+                    const leftOperand = currentArray.slice(lo, mid + 1);
+                    const rightOperand = currentArray.slice(mid + 1, hi + 1);
+                    const correctlyMergedRange = mergeTwoSortedArrays(leftOperand, rightOperand, selectedCharType);
+
+                    let isUserSetupCorrect = true;
+                    if (userSelectedValuesInMergeRange.length !== correctlyMergedRange.length) {
+                        isUserSetupCorrect = false;
+                    } else {
+                        for (let i = 0; i < correctlyMergedRange.length; i++) {
+                            if (userSelectedValuesInMergeRange[i] !== correctlyMergedRange[i]) {
+                                isUserSetupCorrect = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (isUserSetupCorrect) {
+                        if (currentStatusText) { // 「OK」表示を追加
+                            currentStatusText.textContent = 'OK';
+                            currentStatusText.className = 'status-text status-ok';
+                        }
+                        button.disabled = true;
+
+                        for (let i = 0; i < correctlyMergedRange.length; i++) {
+                            currentArray[lo + i] = correctlyMergedRange[i];
+                        }
+
+                        selectsInCurrentRow.forEach((sel, colIndex) => {
+                            const finalValueInCell = currentArray[colIndex];
+                            let cellStateClass = '';
+                            if (colIndex >= lo && colIndex <= hi) {
+                                cellStateClass = 'state-part-of-merged';
+                            } else {
+                                cellStateClass = 'state-untouched-this-pass';
+                            }
+                            const newSelectEl = createSelectElement(
+                                sel.id, finalValueInCell, [finalValueInCell], cellStateClass, true
+                            );
+                            sel.parentNode.replaceChild(newSelectEl, sel);
+                            selectsInCurrentRow[colIndex] = newSelectEl;
+                        });
+
+                        currentStepIndex++;
+
+                        if (currentStepIndex < mergeSteps.length) {
+                            prepareStepUI(currentStepIndex, currentArray);
+                        } else {
+                            displayFinalSortedState(currentArray, mergeSteps.length - 1);
+                        }
+                    } else {
+                        if (currentStatusText) {
+                            currentStatusText.textContent = 'エラー';
+                            currentStatusText.className = 'status-text status-error';
+                        }
+                    }
+                }
+
+                function initializeSortProcess() {
+                    const selectedSize = parseInt(arraySizeSlider.value);
+                    selectedCharType = document.querySelector('input[name="char-type"]:checked').value;
+
+                    initialArray = generateRandomArray(selectedSize, selectedCharType);
+                    allPossibleOptionsForSelect = [...new Set(initialArray)];
+                    currentArray = [...initialArray];
+                    mergeSteps = generateMergeSteps(initialArray.length);
+                    currentStepIndex = 0;
+
+                    sortContainer.innerHTML = '';
+                    allRowsElements = [];
+                    allNumberElementsInRows = [];
+                    allExecuteButtons = [];
+                    allStatusTexts = [];
+
+                    generateRows(mergeSteps.length);
+
+                    if (initialArray.length > 1 && mergeSteps.length > 0) {
+                        prepareStepUI(0, currentArray);
+                    }
+                }
+
+                arraySizeSlider.addEventListener('input', (event) => {
+                    arraySizeValueDisplay.textContent = event.target.value;
+                });
+
+                resetButton.addEventListener('click', initializeSortProcess);
+                charTypeRadios.forEach(radio => radio.addEventListener('change', () => {
+                    // No live update
+                }));
+
+                document.addEventListener('DOMContentLoaded', () => {
+                    // Check if elements exist before trying to set their properties or add event listeners
+                    // This is important because this script is now part of a larger HTML structure,
+                    // and its DOMContentLoaded might fire before or after other scripts,
+                    // or the elements might not be found if IDs are not unique across the whole document.
+                    // For this specific case, IDs like 'array-size-slider' are expected to be unique
+                    // within the .right-pane context.
+                    if (arraySizeSlider) {
+                        arraySizeSlider.min = "5";
+                        arraySizeSlider.value = "7";
+                    }
+                    if (arraySizeValueDisplay) {
+                        arraySizeValueDisplay.textContent = arraySizeSlider ? arraySizeSlider.value : "7";
+                    }
+                    const defaultCharTypeRadio = document.querySelector('input[name="char-type"][value="numbers"]');
+                    if (defaultCharTypeRadio) {
+                        defaultCharTypeRadio.checked = true;
+                    }
+                    selectedCharType = 'numbers'; // Default
+
+                    // Ensure all elements this script depends on are available.
+                    // The getElementById calls for sortContainer, arraySizeSlider, etc.,
+                    // are made at the top of the script. If they are null,
+                    // initializeSortProcess might fail.
+                    if (sortContainer && arraySizeSlider && arraySizeValueDisplay && resetButton && charTypeRadios.length > 0) {
+                        initializeSortProcess();
+                    } else {
+                        console.error("One or more required HTML elements for the sort application were not found.");
+                    }
+                });
+            </script>
+            <!-- ▲▲▲ここまで埋め込みコードのbody部分▲▲▲ -->
+        </div>
+    </div>
+</body>
+
+</html>

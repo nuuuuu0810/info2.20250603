@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>シェルソート 選択</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* --- スタイル 1: Flexboxレイアウト (元の挿入ソートからそのまま) --- */
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        #main {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .left-pane {
+            width: 55%;
+            padding: 20px;
+            box-sizing: border-box;
+            border-right: 1px solid #FFF;
+            background-color: #FFFFFF;
+            overflow-y: auto;
+        }
+
+        .left-pane h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .left-pane p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .right-pane {
+            width: 45%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #FFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            /* controls-container と sort-module-wrapper の間 */
+            overflow-y: auto;
+            height: 100%;
+        }
+
+        /* --- コントロールコンテナ (新規追加) --- */
+        .controls-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+            /* sort-module-wrapper との少しの間隔 */
+            padding: 10px;
+            background-color: #ffffff;
+            border-radius: 6px;
+            width: 100%;
+            max-width: 750px;
+            /* sort-module-wrapper の max-width に合わせる */
+            box-sizing: border-box;
+        }
+
+        .controls-container button {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background-color 0.2s ease;
+        }
+
+        .controls-container button:hover {
+            background-color: #e9ecef;
+        }
+
+        .controls-container button:disabled {
+            background-color: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .controls-container label {
+            font-size: 0.9em;
+            margin-left: 5px;
+        }
+
+        .controls-container input[type="range"] {
+            cursor: pointer;
+            flex-grow: 1;
+            max-width: 150px;
+        }
+
+        #speedValue {
+            font-size: 0.9em;
+            min-width: 65px;
+            /* 少し広げる */
+            text-align: right;
+            color: #333;
+        }
+
+
+        .right-pane h4 {
+            font-size: 1em;
+            color: #333;
+            margin-right: auto;
+            margin-top: 0px;
+            margin-bottom: 0px;
+        }
+
+        .sort-module-wrapper {
+            width: 100%;
+            max-width: 750px;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: auto;
+            padding-left: 30px;
+            height: 85vh;
+        }
+
+        #sync_bar_graph_container {
+            display: flex;
+            width: 100%;
+            min-height: 200px;
+            padding: 10px 0;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+
+        #bar_items_wrapper {
+            display: flex;
+            gap: 5px;
+            align-items: flex-end;
+            position: relative;
+        }
+
+        .bar_item {
+            width: 40px;
+            text-align: center;
+            border: 1px solid #FFF;
+            background-color: #FFFFFF;
+            font-weight: bold;
+            font-size: 1em;
+            color: #FFFFFF;
+            box-sizing: border-box;
+            position: relative;
+            --value: 1;
+            height: calc(25px + (var(--value) * 15px));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background-color 0.3s ease, border-color 0.3s ease, height 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        #shell_main-app-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 0;
+        }
+
+        #gap-display-container {
+            width: 100%;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #333;
+            padding: 5px 0 10px 0;
+            box-sizing: border-box;
+        }
+
+        #gap-display-container span {
+            background-color: #FFFFFF;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+
+
+        #shell_sort-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        .step-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0;
+            justify-content: flex-start;
+            min-height: 45px;
+            opacity: 1;
+            visibility: visible;
+            height: auto;
+            transition: opacity 0.5s ease-in-out, visibility 0s linear 0s, height 0.5s ease-in-out, margin-bottom 0.5s ease-in-out;
+            position: relative;
+            box-sizing: border-box;
+            padding: 0;
+            width: 100%;
+        }
+
+        .step-row:not(.visible) {
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+            visibility: hidden;
+            pointer-events: none;
+            margin-bottom: 0;
+            transition: opacity 0.3s ease-out, height 0.3s ease-out, margin-bottom 0.3s ease-out, visibility 0s linear 0.3s;
+        }
+
+        .step-row.visible {
+            opacity: 1;
+            height: auto;
+            margin-bottom: 4px;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+
+        .initial-array-row.visible {
+            margin-bottom: 8px;
+        }
+
+        .number-squares {
+            display: flex;
+            gap: 6px;
+            margin-right: 10px;
+            flex-wrap: nowrap;
+        }
+
+        .number-element {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            color: black;
+            font-weight: bold;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            cursor: default;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            text-align: center;
+            text-align-last: center;
+            transition: background-color 0.3s ease, border-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .number-element option {
+            background-color: white;
+            color: black;
+        }
+
+        .number-element.state-color-red,
+        .bar_item.state-color-red {
+            background-color: #FFC0CB;
+            border-color: #FFB6C1;
+            color: black !important;
+        }
+
+        .number-element.state-color-yellow,
+        .bar_item.state-color-yellow {
+            background-color: #FFEB3B;
+            border-color: #FBC02D;
+            color: black !important;
+        }
+
+        .number-element.state-color-base-lightblue,
+        .bar_item.state-color-base-lightblue {
+            background-color: #8CE3FE;
+            border-color: #7bc8e2;
+            color: black !important;
+        }
+
+        .number-element.state-color-light-orange,
+        .bar_item.state-color-light-orange {
+            background-color: #FFDAB9;
+            border-color: #FFC8A1;
+            color: black !important;
+        }
+
+        .number-element.state-color-light-green,
+        .bar_item.state-color-light-green {
+            background-color: #90EE90;
+            border-color: #7ACC7A;
+            color: black !important;
+        }
+
+        .number-element.state-initial,
+        .bar_item.state-initial {
+            background-color: #FFC107;
+            /* 初期配列はオレンジ系 */
+            border-color: #FFA000;
+            color: black !important;
+        }
+
+        .number-element.state-final-sorted,
+        .bar_item.state-final-sorted {
+            background-color: #FFC107;
+            /* 最終ソート済みも同じオレンジ系 */
+            border-color: #FFA000;
+            color: black !important;
+        }
+
+        .number-element.state-unsorted,
+        .bar_item.state-unsorted {
+            background-color: #cccccc;
+            border-color: #b3b3b3;
+            color: black !important;
+        }
+
+        .number-element.state-sorted,
+        .bar_item.state-sorted {
+            /* このクラスは現在のシェルソートロジックでは明示的に使われていない可能性 */
+            background-color: #8CE3FE;
+            border-color: #7bc8e2;
+            color: black !important;
+        }
+
+        .number-element.state-key-active,
+        .bar_item.state-key-active {
+            background-color: #FF6347 !important;
+            /* Tomato red for key */
+            border-color: #E5533D !important;
+            box-shadow: 0 0 8px rgba(255, 99, 71, 0.7);
+            transform: scale(1.05);
+            z-index: 10;
+            color: white !important;
+        }
+
+        .number-element.state-compare-active,
+        .bar_item.state-compare-active {
+            background-color: #FF6347 !important;
+            /* Tomato red for key */
+            border-color: #E5533D !important;
+            box-shadow: 0 0 8px rgba(255, 99, 71, 0.7);
+            transform: scale(1.05);
+            z-index: 10;
+            color: white !important;
+            /*
+            background-color: #FFA500 !important; /* Orange for comparison */
+            /*
+            border-color: #E09000 !important;
+            box-shadow: 0 0 8px rgba(255, 165, 0, 0.7);
+            color: black !important;*/
+        }
+
+        .number-element.state-shifting,
+        .bar_item.state-shifting {
+            background-color: #FF6347 !important;
+            /* Tomato red for key */
+            border-color: #E5533D !important;
+            box-shadow: 0 0 8px rgba(255, 99, 71, 0.7);
+            transform: scale(1.05);
+            z-index: 10;
+            color: white !important;
+            /*
+            background-color: #9ACD32 !important; /* YellowGreen for shifting */
+            /*
+            border-color: #89BB2B !important;
+            opacity: 0.9;
+            color: black !important;*/
+        }
+
+
+        .number-element:disabled {
+            opacity: 1;
+            cursor: default;
+        }
+
+        .number-element:disabled::-ms-expand {
+            display: none;
+        }
+
+        .execute-btn {
+            background-color: #212121;
+            color: white;
+            border: 1px solid #000;
+            width: 38px;
+            height: 38px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            transition: background-color 0.2s ease;
+            padding: 0;
+            flex-shrink: 0;
+            cursor: pointer;
+            margin-right: 12px;
+        }
+
+        .execute-btn svg {
+            fill: white;
+            width: 16px;
+            height: 16px;
+            display: block;
+        }
+
+        .execute-btn:disabled {
+            background-color: #666666;
+            border-color: #555555;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .execute-btn:disabled svg {
+            fill: #cccccc;
+        }
+
+        .status-text {
+            font-size: 1.0em;
+            font-weight: bold;
+            min-width: 60px;
+            text-align: left;
+            line-height: 40px;
+            flex-shrink: 0;
+        }
+
+        .status-ok {
+            color: #2ecc40;
+        }
+
+        .status-error {
+            color: #ff4136;
+        }
+
+        .status-complete {
+            color: #2ecc40;
+            /* 完了メッセージも緑でOK */
+        }
+
+        .empty-array-message {
+            padding: 10px;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #555;
+            width: 100%;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="main">
+        <div class="left-pane">
+            <img src="shell.png" alt="shell" width="98%">
+        </div>
+        <div class="right-pane">
+            <div class="controls-container">
+                <button id="playPauseButton">実行</button>
+                <button id="resetButton">リセット</button>
+                <label for="speedRange">速度:</label>
+                <input type="range" id="speedRange" min="1" max="20" value="10" step="1">
+                <span id="speedValue">x1.0 倍</span>
+            </div>
+            <div class="sort-module-wrapper">
+                <h4>現在のギャップ: <span id="shell_current-gap-value">-</span> (<span
+                        id="shell_current-subgroup-info"></span>)</h4>
+                <div id="sync_bar_graph_container">
+                    <div id="bar_items_wrapper">
+                        <!-- JavaScriptで棒グラフ要素を動的に生成 -->
+                    </div>
+                </div>
+                <div id="shell_main-app-container">
+                    <div id="gap-display-container">
+                        <!-- ギャップシーケンス表示用 (オプション) -->
+                    </div>
+                    <div id="shell_sort-container">
+                        <!-- JavaScript will populate this area -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Global Shared State ---
+        let sharedInitialArray = [];
+
+        // --- Script: Shell Sort ---
+        let shell_initialArray = [];
+        let shell_currentArray = [];
+        let shell_allPossibleOptionsForSelect = [];
+
+        const shell_sortContainer = document.getElementById('shell_sort-container');
+        const shell_currentGapValueDisplay = document.getElementById('shell_current-gap-value');
+        const shell_currentSubgroupInfoDisplay = document.getElementById('shell_current-subgroup-info');
+        const gapDisplayContainer = document.getElementById('gap-display-container');
+
+
+        let shell_allRowsElements = [];
+        let shell_allNumberElementsInRows = []; // 各行の select 要素の配列を格納する配列
+        let shell_allExecuteButtons = [];
+        let shell_allStatusTexts = [];
+
+        let shell_state = {
+            gaps: [],
+            currentGapIndex: 0,
+            currentRowIndexInUI: 0, // UI上の現在の行 (0から始まる)
+            isPerformingInnerSort: false,
+            innerSortState: null // アニメーション用内部ソート状態
+        };
+
+        const SHELL_SUBGROUP_COLORS = [
+            "state-color-red", "state-color-light-orange", "state-color-yellow",
+            "state-color-light-green", "state-color-base-lightblue"
+        ];
+
+        const barGraphItemsWrapper = document.getElementById('bar_items_wrapper');
+
+        function renderBarGraph(arr, elementStates = []) {
+            if (!barGraphItemsWrapper) return;
+            if (barGraphItemsWrapper.children.length !== arr.length && arr.length > 0) {
+                barGraphItemsWrapper.innerHTML = '';
+                arr.forEach((_, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'bar_item';
+                    item.id = `bar_item-${index}`;
+                    barGraphItemsWrapper.appendChild(item);
+                });
+            } else if (arr.length === 0) {
+                barGraphItemsWrapper.innerHTML = '';
+            }
+
+            arr.forEach((value, index) => {
+                const item = document.getElementById(`bar_item-${index}`);
+                if (!item) return;
+                item.textContent = value;
+                item.style.setProperty('--value', value);
+
+                const classesToRemove = Array.from(item.classList).filter(cls => cls.startsWith('state-') || cls.includes('-active') || cls.includes('-shifting'));
+                if (classesToRemove.length > 0) item.classList.remove(...classesToRemove);
+
+                if (elementStates && elementStates[index]) {
+                    if (Array.isArray(elementStates[index])) {
+                        item.classList.add(...elementStates[index].filter(Boolean));
+                    } else {
+                        item.classList.add(elementStates[index]);
+                    }
+                } else if (arr.length > 0) { // 配列が存在するが状態指定がない場合
+                    item.classList.add('state-unsorted'); // デフォルトの色
+                }
+            });
+        }
+
+        function shell_createSelectElement(id, value, optionsArray, stateClasses, isDisabled) {
+            const select = document.createElement('select');
+            select.id = id;
+            if (Array.isArray(stateClasses)) {
+                select.className = `number-element ${stateClasses.join(' ')}`;
+            } else {
+                select.className = `number-element ${stateClasses}`;
+            }
+            select.disabled = isDisabled;
+            const stringValueToSelect = String(value);
+
+            // 重複を除いたユニークなオプション値を文字列で取得し、数値としてソート
+            const uniqueStringOptions = [...new Set(optionsArray.map(String))];
+            const sortedOptions = uniqueStringOptions.sort((a, b) => Number(a) - Number(b));
+
+            // 現在のvalueがオプションリストにない場合、追加して再ソート (主に初期表示用)
+            if (value !== undefined && value !== null && value !== '' && !sortedOptions.includes(stringValueToSelect)) {
+                sortedOptions.push(stringValueToSelect);
+                sortedOptions.sort((a, b) => Number(a) - Number(b));
+            }
+
+            sortedOptions.forEach(optVal => {
+                const option = document.createElement('option');
+                option.value = String(optVal); // valueも文字列
+                option.textContent = String(optVal); // textContentも文字列
+                select.appendChild(option);
+            });
+
+            select.value = stringValueToSelect; // 文字列で値を設定
+
+            // select.value が正しく設定されない場合 (例: 文字列'05'と数値5のマッチング問題)、textContent で再試行
+            if (select.value !== stringValueToSelect && select.options.length > 0) {
+                for (let i = 0; i < select.options.length; i++) {
+                    if (select.options[i].textContent === stringValueToSelect) {
+                        select.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            // それでもオプションがなく、値がある場合 (例えば初期値のみ)
+            if (select.options.length === 0 && (value !== undefined && value !== null && value !== '')) {
+                const option = document.createElement('option');
+                option.value = stringValueToSelect;
+                option.textContent = stringValueToSelect;
+                select.appendChild(option);
+                select.value = stringValueToSelect;
+            }
+            return select;
+        }
+
+        function shell_getGaps(N) {
+            if (N <= 1) return []; // 要素が1つ以下ならギャップなし
+            const gaps = [];
+            // Knuth's sequence (h = 3*h + 1) の逆算や、N/2, N/4 ... などのシーケンスが使える
+            // ここでは単純な N/2, N/4 ... を使う
+            let gap = Math.floor(N / 2);
+            while (gap > 0) {
+                gaps.push(gap);
+                gap = Math.floor(gap / 2);
+            }
+            return gaps.length > 0 ? gaps : (N > 1 ? [1] : []); // 最低でもギャップ1は実行したい場合 (N > 1 なら)
+        }
+
+        function shell_generateRows() {
+            shell_sortContainer.innerHTML = '';
+            shell_allRowsElements = [];
+            shell_allNumberElementsInRows = [];
+            shell_allExecuteButtons = [];
+            shell_allStatusTexts = [];
+            const numElements = shell_currentArray.length;
+
+            // 全select要素で共通して使用可能なオプションリストを作成 (1から最大値まで)
+            shell_allPossibleOptionsForSelect = [];
+            if (numElements > 0) {
+                const maxValInArray = shell_currentArray.length > 0 ? Math.max(...shell_currentArray.map(Number)) : 0;
+                const maxOptionVal = Math.max(20, maxValInArray); // 最低でも1-20のオプションは用意
+                for (let k = 1; k <= maxOptionVal; k++) {
+                    shell_allPossibleOptionsForSelect.push(String(k));
+                }
+            }
+
+            // 初期配列表示行 (オレンジ色)
+            if (numElements > 0) {
+                const initialDisplayRowDiv = document.createElement('div');
+                initialDisplayRowDiv.className = 'step-row visible initial-array-row'; // 常に表示
+                const initialSquaresDiv = document.createElement('div');
+                initialSquaresDiv.className = 'number-squares';
+                shell_initialArray.forEach((val, index) => {
+                    const selectEl = shell_createSelectElement(`initial-el-${index}`, val, [val], 'state-initial', true);
+                    initialSquaresDiv.appendChild(selectEl);
+                });
+                initialDisplayRowDiv.appendChild(initialSquaresDiv);
+                shell_sortContainer.appendChild(initialDisplayRowDiv);
+            } else { // 配列が空の場合のメッセージ
+                const emptyMsgDiv = document.createElement('div');
+                emptyMsgDiv.className = 'empty-array-message visible';
+                emptyMsgDiv.textContent = "ソート対象のデータがありません。";
+                shell_sortContainer.appendChild(emptyMsgDiv);
+                renderBarGraph([], []); // 棒グラフも空に
+                shell_currentGapValueDisplay.textContent = "-";
+                if (shell_currentSubgroupInfoDisplay) shell_currentSubgroupInfoDisplay.textContent = "";
+                if (gapDisplayContainer) gapDisplayContainer.innerHTML = "ギャップシーケンス: -";
+                return; // 配列が空ならここで終了
+            }
+            // 初期状態の棒グラフ描画
+            renderBarGraph(shell_currentArray, shell_currentArray.map(() => 'state-initial'));
+            if (shell_currentSubgroupInfoDisplay) shell_currentSubgroupInfoDisplay.textContent = "初期状態";
+
+
+            // ギャップシーケンスの表示
+            if (gapDisplayContainer) {
+                gapDisplayContainer.innerHTML = `ギャップシーケンス: <span>${shell_state.gaps.join(' → ') || '-'}</span>`;
+            }
+
+            const numGaps = shell_state.gaps.length;
+            // 各ギャップごとの行を生成
+            for (let i = 0; i < numGaps; i++) { // i はUI上の行インデックスとギャップインデックスに対応
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'step-row'; // 初期状態では非表示 (CSSで制御)
+                rowDiv.id = `shell-step-row-${i}`;
+                const squaresDiv = document.createElement('div');
+                squaresDiv.className = 'number-squares';
+                const currentNumberElementsForRow = [];
+
+                for (let j = 0; j < numElements; j++) {
+                    // 初期値は空で、state-unsorted (灰色)、disabled
+                    const selectEl = shell_createSelectElement(`shell-el-${i}-${j}`, '', shell_allPossibleOptionsForSelect, 'state-unsorted', true);
+                    squaresDiv.appendChild(selectEl);
+                    currentNumberElementsForRow.push(selectEl);
+                }
+                shell_allNumberElementsInRows.push(currentNumberElementsForRow);
+                rowDiv.appendChild(squaresDiv);
+
+                const button = document.createElement('button');
+                button.className = 'execute-btn';
+                button.dataset.rowIndexUI = i; // UI行インデックスを保持
+                button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>';
+                button.disabled = true; // 初期は無効
+                button.addEventListener('click', function (event) {
+                    shell_handleExecute(event, false); // falseは自動実行ではない印
+                });
+                shell_allExecuteButtons[i] = button;
+                rowDiv.appendChild(button);
+
+                const statusSpan = document.createElement('span');
+                statusSpan.className = 'status-text';
+                statusSpan.id = `shell-status-${i}`;
+                shell_allStatusTexts[i] = statusSpan;
+                rowDiv.appendChild(statusSpan);
+
+                shell_sortContainer.appendChild(rowDiv);
+                shell_allRowsElements.push(rowDiv);
+            }
+
+            // ソート完了メッセージ表示用の最後の行
+            // (要素が1つ以下でソート不要の場合もこの行を使う)
+            if (numGaps > 0 || numElements <= 1) {
+                const finalRowIndexUI = numGaps; // このインデックスは shell_allRowsElements などに対応
+                const finalStatusRow = document.createElement('div');
+                finalStatusRow.className = 'step-row'; // 初期状態では非表示、表示は shell_displayAllSorted で制御
+                finalStatusRow.id = `shell-step-row-${finalRowIndexUI}`;
+
+                // ソート済み配列を表示するためのコンテナを追加
+                const finalSquaresDiv = document.createElement('div');
+                finalSquaresDiv.className = 'number-squares';
+                finalSquaresDiv.id = `final-sorted-squares-${finalRowIndexUI}`; // IDを付与
+                finalSquaresDiv.style.display = 'none'; // 初期状態では非表示
+                finalStatusRow.appendChild(finalSquaresDiv);
+
+                const finalStatusSpan = document.createElement('span');
+                finalStatusSpan.className = 'status-text';
+                finalStatusSpan.id = `shell-status-${finalRowIndexUI}`;
+                finalStatusRow.appendChild(finalStatusSpan);
+
+                shell_allStatusTexts[finalRowIndexUI] = finalStatusSpan;
+                shell_allRowsElements.push(finalStatusRow);
+                shell_allNumberElementsInRows.push([]); // この行はselect要素を直接管理しない
+                shell_allExecuteButtons.push(null); // この行に実行ボタンはない
+
+                shell_sortContainer.appendChild(finalStatusRow);
+            }
+        }
+
+        function shell_prepareStepUI(rowIndexUI, arrayToDisplay) {
+            // rowIndexUI は shell_state.currentRowIndexInUI と一致するはず
+            // arrayToDisplay は shell_currentArray
+            if (rowIndexUI >= shell_allRowsElements.length || shell_state.currentGapIndex >= shell_state.gaps.length) {
+                // 通常ここには来ないが、範囲外アクセス防止
+                return;
+            }
+
+            const currentGap = shell_state.gaps[shell_state.currentGapIndex];
+            shell_currentGapValueDisplay.textContent = currentGap;
+            if (shell_currentSubgroupInfoDisplay) {
+                // 最初のサブグループ情報（アニメーション開始時に更新されるが、初期表示用）
+                shell_currentSubgroupInfoDisplay.textContent = `サブグループ - / ${currentGap}`;
+            }
+
+
+            const currentRowElement = shell_allRowsElements[rowIndexUI];
+            if (!currentRowElement) return;
+            currentRowElement.classList.add('visible'); // 行を表示
+
+            const currentSelectsInRow = shell_allNumberElementsInRows[rowIndexUI];
+            if (!currentSelectsInRow || currentSelectsInRow.length === 0) {
+                // この行にselect要素がない場合 (例: 最終完了行だが、ここはギャップ処理行なのでselectがあるはず)
+                if (shell_allExecuteButtons[rowIndexUI]) shell_allExecuteButtons[rowIndexUI].style.display = 'none'; // ボタンも隠す
+                return;
+            }
+
+            const barElementStates = []; // 棒グラフ用の状態
+
+            currentSelectsInRow.forEach((selectEl, colIndex) => {
+                let value = arrayToDisplay[colIndex];
+                let sublistId = colIndex % currentGap; // 0から始まるサブリストID
+                let cellStateClass = SHELL_SUBGROUP_COLORS[sublistId % SHELL_SUBGROUP_COLORS.length];
+                barElementStates[colIndex] = cellStateClass; // 棒グラフも同じサブグループ色
+
+                // select要素を再生成して値を設定、サブグループ色を適用、活性化
+                const newSelectEl = shell_createSelectElement(
+                    selectEl.id, value, shell_allPossibleOptionsForSelect, cellStateClass, false // false = enabled
+                );
+                selectEl.parentNode.replaceChild(newSelectEl, selectEl);
+                currentSelectsInRow[colIndex] = newSelectEl; // 配列内の参照を更新
+            });
+            renderBarGraph(arrayToDisplay, barElementStates); // 棒グラフ更新
+
+            // 実行ボタンを有効化
+            if (shell_allExecuteButtons[rowIndexUI]) {
+                shell_allExecuteButtons[rowIndexUI].disabled = false;
+                shell_allExecuteButtons[rowIndexUI].style.display = 'flex'; // 表示（もし隠れていたら）
+            }
+            // ステータステキストをクリア
+            if (shell_allStatusTexts[rowIndexUI]) {
+                shell_allStatusTexts[rowIndexUI].textContent = '';
+                shell_allStatusTexts[rowIndexUI].className = 'status-text'; // デフォルトクラスに戻す
+            }
+        }
+
+        function shell_displayAllSorted(sortedArray, lastUsedRowIndexUI) {
+            const isSortNeeded = shell_initialArray.length > 1; // 初期配列が1要素以下ならソート不要
+            shell_currentGapValueDisplay.textContent = isSortNeeded ? "ソート完了！" : "ソート不要";
+            if (shell_currentSubgroupInfoDisplay) shell_currentSubgroupInfoDisplay.textContent = "";
+
+            // 棒グラフを最終的にソートされた状態 (オレンジ色) で表示
+            if (sortedArray.length > 0) {
+                renderBarGraph(sortedArray, sortedArray.map(() => 'state-final-sorted'));
+            } else {
+                renderBarGraph([], []); // 配列が空なら棒グラフも空に
+            }
+
+            // 未使用のギャップ行を非表示にする (lastUsedRowIndexUI は最後のギャップ処理行のUIインデックス)
+            // 例: ギャップが3つなら、lastUsedRowIndexUI は 2。i は 3 から始まり、gaps.length (3) より小さくないのでループしない
+            for (let i = lastUsedRowIndexUI + 1; i < shell_state.gaps.length; i++) {
+                if (shell_allRowsElements[i]) {
+                    shell_allRowsElements[i].classList.remove('visible');
+                }
+            }
+
+            // 「完了」行のインデックス (shell_allRowsElements 配列における)
+            // shell_generateRows で finalStatusRow は gaps.length のインデックスに追加される
+            const finalDisplayRowIndexUI = shell_state.gaps.length;
+
+            const targetRowElementForStatus = shell_allRowsElements[finalDisplayRowIndexUI];
+            const targetStatusTextElement = shell_allStatusTexts[finalDisplayRowIndexUI];
+
+            if (targetRowElementForStatus && targetStatusTextElement) {
+                targetRowElementForStatus.classList.add('visible'); // 完了行を表示
+
+                const finalSquaresContainer = document.getElementById(`final-sorted-squares-${finalDisplayRowIndexUI}`);
+
+                if (sortedArray.length > 0) { // 配列に要素がある場合のみ数値表示
+                    targetStatusTextElement.textContent = isSortNeeded ? '完了' : 'ソート不要';
+                    targetStatusTextElement.className = 'status-text status-complete';
+
+                    if (finalSquaresContainer) {
+                        finalSquaresContainer.innerHTML = ''; // 既存の内容をクリア
+                        finalSquaresContainer.style.display = 'flex'; // 表示する
+                        sortedArray.forEach((val, index) => {
+                            const selectEl = shell_createSelectElement(
+                                `final-sorted-el-${finalDisplayRowIndexUI}-${index}`, // ユニークID
+                                val,
+                                [val], // オプションは現在の値のみ
+                                'state-final-sorted', // オレンジ色スタイル
+                                true // disabled
+                            );
+                            finalSquaresContainer.appendChild(selectEl);
+                        });
+                    }
+                } else { // ソート対象の配列が空の場合
+                    targetStatusTextElement.textContent = 'データなし';
+                    targetStatusTextElement.className = 'status-text status-complete'; // 表示は完了扱い
+                    if (finalSquaresContainer) {
+                        finalSquaresContainer.innerHTML = '';
+                        finalSquaresContainer.style.display = 'none'; // 数値表示コンテナは隠す
+                    }
+                }
+
+                // 完了行に実行ボタンはないはずだが、念のため非表示処理
+                if (shell_allExecuteButtons[finalDisplayRowIndexUI]) {
+                    shell_allExecuteButtons[finalDisplayRowIndexUI].style.display = 'none';
+                }
+            }
+
+            if (isAutoPlaying) {
+                stopAutoPlay();
+            }
+            if (playPauseButton) {
+                playPauseButton.textContent = '実行';
+                playPauseButton.disabled = true; // ソート完了後は実行ボタンを無効化
+            }
+        }
+
+        // この関数は、指定されたギャップに対してソートを行った後の配列を計算して返す
+        // ユーザー入力の正誤判定に使用される
+        function calculateExpectedStateForGap(currentArr, gap) {
+            let expectedArray = [...currentArr]; // 元の配列をコピー
+            const numElements = expectedArray.length;
+
+            // 各サブグループに対して挿入ソートを模倣
+            for (let offset = 0; offset < gap; offset++) { // offset はサブグループの開始位置
+                // サブグループ内の要素に対して挿入ソート (i はサブグループの2番目の要素から)
+                for (let i = offset + gap; i < numElements; i += gap) {
+                    let tempKey = expectedArray[i]; // 現在の要素をキーとして保持
+                    let k = i; // k はキーを挿入する位置を探すためのインデックス
+                    // キーより大きい要素があり、かつサブグループの範囲内である限り右にシフト
+                    while (k >= gap && expectedArray[k - gap] > tempKey && (k - gap) % gap === offset) { // (k-gap)%gap === offset で同じサブグループか確認
+                        expectedArray[k] = expectedArray[k - gap];
+                        k -= gap;
+                    }
+                    expectedArray[k] = tempKey; // 正しい位置にキーを挿入
+                }
+            }
+            return expectedArray;
+        }
+
+        function shell_handleExecute(event, isAutoClick = false) {
+            const button = event.currentTarget;
+            const uiRowIndexOfButton = parseInt(button.dataset.rowIndexUI);
+
+            // 現在の処理対象のUI行とボタンの行が一致しない、または全ギャップ処理済みなら何もしない
+            if (uiRowIndexOfButton !== shell_state.currentRowIndexInUI ||
+                shell_state.currentGapIndex >= shell_state.gaps.length) {
+                return;
+            }
+
+            // 自動再生中に手動でボタンが押されたら、自動再生を停止
+            if (shell_state.isPerformingInnerSort && !isAutoClick) {
+                stopAutoPlay(); // 自動再生を停止
+                shell_state.isPerformingInnerSort = false;
+                shell_state.innerSortState = null; // アニメーション状態をリセット
+                if (shell_currentSubgroupInfoDisplay) shell_currentSubgroupInfoDisplay.textContent = "手動操作中";
+            }
+
+            const numElements = shell_currentArray.length;
+            const currentStatusText = shell_allStatusTexts[shell_state.currentRowIndexInUI];
+            const userSelectedRowState = [];
+            const selectsInCurrentRow = shell_allNumberElementsInRows[shell_state.currentRowIndexInUI];
+
+            // ユーザーがselect要素で設定した現在の行の状態を取得
+            selectsInCurrentRow.forEach(selectEl => {
+                userSelectedRowState.push(Number(selectEl.value));
+            });
+
+            const currentGap = shell_state.gaps[shell_state.currentGapIndex];
+            // 正解の配列を計算 (自動再生からの呼び出しの場合、アニメーション開始時の配列を基準にする)
+            const baseArrayForComparison = (isAutoClick && shell_state.innerSortState) ? shell_state.innerSortState.originalArrayForGap : shell_currentArray;
+            const expectedArrayAfterGapSort = calculateExpectedStateForGap(baseArrayForComparison, currentGap);
+
+            // ユーザー設定が正しいか検証
+            let isUserSetupCorrect = true;
+            for (let i = 0; i < numElements; i++) {
+                if (userSelectedRowState[i] !== expectedArrayAfterGapSort[i]) {
+                    isUserSetupCorrect = false;
+                    break;
+                }
+            }
+
+            const barElementStatesAfterUserAction = []; // 棒グラフ用の状態配列
+
+            if (isUserSetupCorrect) {
+                currentStatusText.textContent = 'OK';
+                currentStatusText.className = 'status-text status-ok';
+                button.disabled = true; // ボタンを無効化
+
+                shell_currentArray = [...userSelectedRowState]; // グローバルな配列状態を更新
+
+                // このボタンの実行が、最後のギャップの処理を完了させるかどうか
+                const isCompletingTheLastGap = (shell_state.currentGapIndex === shell_state.gaps.length - 1);
+
+                shell_allNumberElementsInRows[shell_state.currentRowIndexInUI].forEach((sel, idx) => {
+                    const finalValueInCell = shell_currentArray[idx];
+                    let cellStateClass;
+
+                    // 最後のギャップ処理が完了する行であっても、ここではサブグループカラーを適用。
+                    // 最終的なオレンジ色の表示は shell_displayAllSorted で行う。
+                    let sublistId = idx % currentGap;
+                    cellStateClass = SHELL_SUBGROUP_COLORS[sublistId % SHELL_SUBGROUP_COLORS.length];
+
+                    barElementStatesAfterUserAction[idx] = cellStateClass; // 棒グラフも同じ状態
+
+                    // select要素を確定状態（disabled, 正しい値と色）で再生成
+                    const newSelectEl = shell_createSelectElement(
+                        sel.id, finalValueInCell, [finalValueInCell], cellStateClass, true // true = disabled
+                    );
+                    sel.parentNode.replaceChild(newSelectEl, sel);
+                    shell_allNumberElementsInRows[shell_state.currentRowIndexInUI][idx] = newSelectEl;
+                });
+                renderBarGraph(shell_currentArray, barElementStatesAfterUserAction); // 更新された状態で棒グラフを再描画
+
+                shell_state.currentGapIndex++; // 次のギャップに進む
+                const previousUIRowIndex = shell_state.currentRowIndexInUI; // 完了したUI行のインデックスを保持
+                shell_state.currentRowIndexInUI++; // 次のUI行に進む
+
+                // 自動再生のアニメーション状態をリセット
+                shell_state.isPerformingInnerSort = false;
+                shell_state.innerSortState = null;
+                if (shell_currentSubgroupInfoDisplay) shell_currentSubgroupInfoDisplay.textContent = "次のギャップ準備中...";
+
+
+                if (shell_state.currentGapIndex < shell_state.gaps.length) { // まだ処理するギャップが残っている場合
+                    // 次のUI行が存在し、その行にselect要素があることを確認
+                    if (shell_state.currentRowIndexInUI < shell_allRowsElements.length &&
+                        shell_allNumberElementsInRows[shell_state.currentRowIndexInUI] &&
+                        shell_allNumberElementsInRows[shell_state.currentRowIndexInUI].length > 0) {
+                        shell_prepareStepUI(shell_state.currentRowIndexInUI, shell_currentArray);
+                    } else {
+                        // 通常ここには到達しないはず (例: ギャップはあるがUI行が足りない)
+                        shell_displayAllSorted(shell_currentArray, previousUIRowIndex);
+                    }
+                } else { // 全てのギャップ処理が完了した場合
+                    // previousUIRowIndex は最後に処理したギャップの行
+                    shell_displayAllSorted(shell_currentArray, previousUIRowIndex);
+                }
+            } else { // ユーザーの設定が間違っていた場合
+                currentStatusText.textContent = 'エラー';
+                currentStatusText.className = 'status-text status-error';
+                // 棒グラフはユーザーが設定した(間違った)状態で、サブグループ色で表示
+                selectsInCurrentRow.forEach((sel, idx) => {
+                    let sublistId = idx % currentGap;
+                    barElementStatesAfterUserAction[idx] = SHELL_SUBGROUP_COLORS[sublistId % SHELL_SUBGROUP_COLORS.length];
+                });
+                renderBarGraph(userSelectedRowState, barElementStatesAfterUserAction);
+
+                // 自動再生中かつ自動クリックでエラーになった場合は、自動再生を停止
+                if (isAutoPlaying && isAutoClick) {
+                    stopAutoPlay();
+                }
+            }
+        }
+
+
+        function shell_initializeSortProcess() {
+            stopAutoPlay(); // 既存の自動再生があれば停止
+
+            // 初期配列の設定 (例)
+            sharedInitialArray = [9, 4, 7, 8, 10, 5, 6, 1, 3, 2];
+            // sharedInitialArray = [8,1,6,3,5,2,7,4];
+            // sharedInitialArray = [3,1,2];
+            // sharedInitialArray = [1]; // ソート不要ケース
+            // sharedInitialArray = []; // 空配列ケース
+
+            shell_initialArray = [...sharedInitialArray].map(Number); // 数値に変換してコピー
+            shell_currentArray = [...shell_initialArray]; // 現在の配列状態も初期化
+
+            // シェルソートの状態を初期化
+            shell_state.gaps = shell_getGaps(shell_currentArray.length);
+            shell_state.currentGapIndex = 0;
+            shell_state.currentRowIndexInUI = 0;
+            shell_state.isPerformingInnerSort = false;
+            shell_state.innerSortState = null;
+
+            shell_generateRows(); // UIを行列で再生成
+
+            // ボタンの状態制御
+            if (playPauseButton) {
+                playPauseButton.textContent = '実行';
+                // 配列が短いまたはギャップがない場合 (ソート不要)、実行ボタンを無効化し、即座に完了表示
+                if (shell_currentArray.length <= 1 || shell_state.gaps.length === 0) {
+                    playPauseButton.disabled = true;
+                    shell_displayAllSorted(shell_currentArray, -1); // -1 はギャップ処理行がなかったことを示す
+                } else {
+                    playPauseButton.disabled = false; // ソート可能なら実行ボタンを有効化
+                    // 最初のステップのUI準備
+                    shell_prepareStepUI(shell_state.currentRowIndexInUI, shell_currentArray);
+                }
+            } else { // playPauseButton がない場合 (テスト等)
+                if (shell_currentArray.length <= 1 || shell_state.gaps.length === 0) {
+                    shell_displayAllSorted(shell_currentArray, -1);
+                }
+            }
+        }
+
+        // --- AutoPlay and Controls ---
+        let playPauseButton;
+        let resetButton;
+        let speedRange;
+        let speedValueDisplay;
+
+        let isAutoPlaying = false;
+        let autoPlayTimerId = null;
+        let actualDelayMs = 1000; // アニメーションステップ間の遅延 (ミリ秒)
+        const BASE_SPEED_MS = 1000; // スライダーのx1.0倍速の基準時間
+
+        function toggleAutoPlay() {
+            if (isAutoPlaying) {
+                stopAutoPlay();
+            } else {
+                startAutoPlay();
+            }
+        }
+
+        function startAutoPlay() {
+            // 既にソート完了済みか、ソート対象がない場合は開始しない
+            if (shell_state.currentGapIndex >= shell_state.gaps.length || shell_currentArray.length <= 1) {
+                if (playPauseButton) {
+                    playPauseButton.textContent = '実行';
+                    playPauseButton.disabled = true;
+                }
+                isAutoPlaying = false;
+                return;
+            }
+
+            isAutoPlaying = true;
+            if (playPauseButton) {
+                playPauseButton.textContent = '一時停止';
+                playPauseButton.disabled = false; // 一時停止できるように
+            }
+            autoStep(); // 最初のステップを実行
+        }
+
+        function stopAutoPlay() {
+            isAutoPlaying = false;
+            if (autoPlayTimerId) {
+                clearTimeout(autoPlayTimerId);
+                autoPlayTimerId = null;
+            }
+            if (playPauseButton) {
+                playPauseButton.textContent = '実行';
+                // ソートがまだ終わっていなければ、実行ボタンは有効
+                if (shell_state.currentGapIndex >= shell_state.gaps.length || shell_currentArray.length <= 1) {
+                    playPauseButton.disabled = true;
+                } else {
+                    playPauseButton.disabled = false;
+                }
+            }
+        }
+
+        function autoStep() {
+            if (!isAutoPlaying) return;
+
+            // 全てのギャップ処理が完了していたら停止
+            if (shell_state.currentGapIndex >= shell_state.gaps.length || shell_currentArray.length <= 1) {
+                stopAutoPlay();
+                // shell_displayAllSorted は shell_handleExecute の最後で呼ばれるのでここでは不要
+                return;
+            }
+
+            const uiRowIndex = shell_state.currentRowIndexInUI; // 現在のUI行
+            const currentExecuteButtonForRow = shell_allExecuteButtons[uiRowIndex];
+
+            // UI行が存在しない場合 (予期せぬエラー)
+            if (uiRowIndex >= shell_allRowsElements.length) {
+                stopAutoPlay();
+                return;
+            }
+
+            // 現在のギャップに対する内部ソート（アニメーション）の開始
+            if (!shell_state.isPerformingInnerSort) {
+                const currentGap = shell_state.gaps[shell_state.currentGapIndex];
+                shell_state.isPerformingInnerSort = true;
+                shell_state.innerSortState = {
+                    workingArray: [...shell_currentArray],          // このギャップ処理中の配列
+                    originalArrayForGap: [...shell_currentArray], // このギャップ処理開始時の配列 (正解判定用)
+                    currentSubgroupOffset: 0, // 現在処理中のサブグループのオフセット (0からgap-1)
+                    i_relative: 1,            // サブグループ内の挿入ソートの外部ループ変数 (0から始まる相対インデックス)
+                    k_relative: 1,            // サブグループ内の挿入ソートの内部ループ変数 (相対インデックス)
+                    tempKey: null,            // 挿入ソート中のキー要素
+                    phase: 'PRE_SUBGROUP_LOOP', // アニメーションの現在のフェーズ
+                    gap: currentGap,
+                    highlights: []            // ハイライトする要素の {index, type} の配列
+                };
+                if (currentExecuteButtonForRow) currentExecuteButtonForRow.disabled = true; // アニメーション中は手動ボタン無効
+                shell_currentGapValueDisplay.textContent = currentGap; // 現在のギャップ値を表示
+                if (shell_currentSubgroupInfoDisplay) shell_currentSubgroupInfoDisplay.textContent = `サブグループ 1 / ${currentGap}`;
+            }
+
+            // 内部ソートの1ステップを実行
+            const gapFullyProcessedByInnerSort = performNextInnerSortStep();
+
+            if (gapFullyProcessedByInnerSort) { // このギャップの全サブグループのソートが完了
+                // UI上のselect要素に最終結果を反映 (ユーザーが見ているもの)
+                const selectsInCurrentRow = shell_allNumberElementsInRows[uiRowIndex];
+                const finalArrayForGap = shell_state.innerSortState.workingArray;
+                if (selectsInCurrentRow) {
+                    selectsInCurrentRow.forEach((sel, idx) => {
+                        sel.value = String(finalArrayForGap[idx]);
+                    });
+                }
+                // 実行ボタンをプログラムからクリックして、次のギャップに進む処理を起動
+                if (currentExecuteButtonForRow) {
+                    shell_handleExecute({ currentTarget: currentExecuteButtonForRow }, true); // true = 自動クリック
+                } else { // 実行ボタンがない場合 (通常は完了行などだが、ここでは予期せぬ)
+                    stopAutoPlay();
+                    return;
+                }
+
+                // まだ次のギャップがあり、自動再生が継続中なら、次のautoStepを予約
+                if (isAutoPlaying && shell_state.currentGapIndex < shell_state.gaps.length) {
+                    autoPlayTimerId = setTimeout(autoStep, actualDelayMs);
+                }
+                // else: これで全ギャップ完了なら、shell_handleExecute -> shell_displayAllSorted で停止する
+
+            } else { // 内部ソート（アニメーション）がまだ途中
+                // サブグループ情報を更新
+                if (shell_state.innerSortState && shell_currentSubgroupInfoDisplay) {
+                    const gapVal = shell_state.innerSortState.gap;
+                    const offset = shell_state.innerSortState.currentSubgroupOffset;
+                    if (offset < gapVal) { // 有効なオフセットか確認
+                        shell_currentSubgroupInfoDisplay.textContent = `サブグループ ${offset + 1} / ${gapVal}`;
+                    }
+                }
+                // 次の内部ソートステップを予約
+                autoPlayTimerId = setTimeout(autoStep, actualDelayMs);
+            }
+        }
+
+        // シェルソートの内部ソート (挿入ソート) の1ステップを実行し、
+        // 現在のギャップの処理が完了したかどうかを返す
+        function performNextInnerSortStep() {
+            const state = shell_state.innerSortState;
+            if (!state) return false; // 状態がなければ何もしない
+
+            const arr = state.workingArray; // 現在処理中の配列
+            const n = arr.length;
+            const gap = state.gap;
+            let currentOffset = state.currentSubgroupOffset; // 現在のサブグループの開始インデックス
+
+            state.highlights = []; // 今回のステップでのハイライトをリセット
+
+            // サブグループ内の相対インデックス (0-based) から実際の配列インデックスを取得するヘルパー
+            function getActualIndex(relativeIndex) {
+                return currentOffset + (relativeIndex * gap);
+            }
+            // 指定されたオフセットのサブグループに要素がいくつあるか数える
+            function countElementsInSubgroup(offset) {
+                let count = 0;
+                if (offset >= gap) return 0; // 無効なオフセット
+                for (let i = offset; i < n; i += gap) {
+                    count++;
+                }
+                return count;
+            }
+
+            let subgroupElementCount = countElementsInSubgroup(currentOffset);
+
+            // 有限状態機械で挿入ソートの各ステップを模倣
+            switch (state.phase) {
+                case 'PRE_SUBGROUP_LOOP': // 新しいサブグループの処理開始前
+                    if (currentOffset >= gap) { // 全てのサブグループを処理し終えた
+                        state.phase = 'ALL_SUBGROUPS_DONE';
+                        return performNextInnerSortStep(); // 即座に次のフェーズへ
+                    }
+                    subgroupElementCount = countElementsInSubgroup(currentOffset); // 要素数を再計算
+                    if (subgroupElementCount <= 1) { // サブグループが1要素以下ならソート不要
+                        state.phase = 'POST_SUBGROUP_LOOP'; // このサブグループをスキップ
+                        return performNextInnerSortStep();
+                    }
+                    state.i_relative = 1; // 挿入ソートの外側ループ開始 (サブグループの2番目の要素から)
+                    state.phase = 'SET_KEY_SUB'; // キーを設定するフェーズへ
+                    return performNextInnerSortStep(); // 即座に次のフェーズへ
+
+
+                case 'SET_KEY_SUB': // 挿入ソートのキー (tempKey) を設定
+                    if (state.i_relative >= subgroupElementCount) { // サブグループの最後まで処理したら
+                        state.phase = 'POST_SUBGROUP_LOOP'; // このサブグループの処理完了
+                        return performNextInnerSortStep();
+                    }
+                    const actualIndex_i = getActualIndex(state.i_relative); // キーの実際のインデックス
+                    if (actualIndex_i >= n) { // 配列範囲外 (通常起こらないはず)
+                        state.phase = 'POST_SUBGROUP_LOOP';
+                        return performNextInnerSortStep();
+                    }
+
+                    state.tempKey = arr[actualIndex_i]; // キーを保存
+                    state.k_relative = state.i_relative; // 比較とシフトのための内部ループインデックス初期化
+                    state.highlights.push({ index: actualIndex_i, type: 'state-key-active' }); // キーをハイライト
+                    state.phase = 'COMPARING_SUB'; // 比較フェーズへ
+                    break; // UI更新のために一旦抜ける
+
+                case 'COMPARING_SUB': // キーとソート済み部分の要素を比較
+                    const actualIndex_k = getActualIndex(state.k_relative); // 現在のキーの位置候補
+                    const actualIndex_k_minus_1_sub = getActualIndex(state.k_relative - 1); // 比較対象 (キーの左隣)
+
+                    state.highlights.push({ index: actualIndex_k, type: 'state-key-active' }); // キーの位置候補をハイライト
+
+                    if (state.k_relative >= 1) { // サブグループの先頭より右側なら比較可能
+                        if (actualIndex_k_minus_1_sub < n && actualIndex_k_minus_1_sub >= 0) { // 比較対象が有効範囲内
+                            state.highlights.push({ index: actualIndex_k_minus_1_sub, type: 'state-compare-active' }); // 比較対象をハイライト
+                            if (arr[actualIndex_k_minus_1_sub] > state.tempKey) { // 左隣が大きい場合
+                                state.phase = 'SHIFTING_SUB'; // シフトフェーズへ
+                            } else { // 左隣がキー以下の場合 (挿入位置確定)
+                                state.phase = 'INSERTING_SUB'; // 挿入フェーズへ
+                            }
+                        } else { // 比較対象が無効 (k_relative-1 がサブグループの範囲外) -> 挿入
+                            state.phase = 'INSERTING_SUB';
+                        }
+                    } else { // k_relative が 0 (サブグループの先頭に到達) -> 挿入
+                        state.phase = 'INSERTING_SUB';
+                    }
+                    break; // UI更新
+
+                case 'SHIFTING_SUB': // 要素を右にシフト
+                    const targetShiftIndex = getActualIndex(state.k_relative); // シフト先
+                    const sourceShiftIndex = getActualIndex(state.k_relative - 1); // シフト元
+
+                    arr[targetShiftIndex] = arr[sourceShiftIndex]; // シフト実行
+                    state.highlights.push({ index: targetShiftIndex, type: 'state-shifting' }); // シフト先をハイライト
+                    if (sourceShiftIndex >= 0) state.highlights.push({ index: sourceShiftIndex, type: 'state-compare-active' }); // シフト元も念のため
+
+                    state.k_relative--; // 左に一つずらして再度比較へ
+                    state.phase = 'COMPARING_SUB';
+                    break; // UI更新
+
+                case 'INSERTING_SUB': // キーを正しい位置に挿入
+                    const insertActualIndex = getActualIndex(state.k_relative); // 挿入する実際のインデックス
+                    arr[insertActualIndex] = state.tempKey; // 挿入実行
+                    state.highlights.push({ index: insertActualIndex, type: 'state-key-active' }); // 挿入位置をハイライト
+
+                    state.i_relative++; // 次のキーへ (外側ループを進める)
+                    if (state.i_relative >= subgroupElementCount) { // サブグループの最後まで処理したら
+                        state.phase = 'POST_SUBGROUP_LOOP'; // このサブグループ完了
+                    } else {
+                        state.phase = 'SET_KEY_SUB'; // 次のキー設定へ
+                    }
+                    if (state.phase === 'POST_SUBGROUP_LOOP') return performNextInnerSortStep(); // 即座に次のフェーズへ
+                    break; // UI更新
+
+                case 'POST_SUBGROUP_LOOP': // 1つのサブグループの処理が完了
+                    state.currentSubgroupOffset++; // 次のサブグループへ
+                    // ループ変数をリセット
+                    state.i_relative = 1;
+                    state.k_relative = 1;
+                    state.tempKey = null;
+
+                    if (state.currentSubgroupOffset >= gap) { // 全サブグループ完了
+                        state.phase = 'ALL_SUBGROUPS_DONE';
+                    } else {
+                        state.phase = 'PRE_SUBGROUP_LOOP'; // 次のサブグループの準備へ
+                    }
+                    return performNextInnerSortStep(); // 即座に次のフェーズへ
+
+                case 'ALL_SUBGROUPS_DONE': // 現在のギャップに対する全サブグループのソートが完了
+                    shell_currentArray = [...state.workingArray]; // グローバルな配列も更新しておく
+                    updateUIAfterInnerSortStep(true); // UIを最終状態に更新 (isGapComplete = true)
+                    return true; // このギャップの処理が完了したことを示す
+            }
+
+            updateUIAfterInnerSortStep(false); // 各ステップ後にUIを更新 (isGapComplete = false)
+            return false; // このギャップの処理はまだ途中
+        }
+
+
+        // 内部ソートの各ステップ後にUI (select要素の色と値、棒グラフ) を更新する
+        function updateUIAfterInnerSortStep(isGapComplete = false) {
+            const state = shell_state.innerSortState;
+            if (!state) return;
+
+            const arrToDisplay = state.workingArray; // 現在の内部ソート中の配列
+            const currentSelectsInRow = shell_allNumberElementsInRows[shell_state.currentRowIndexInUI];
+            const barElementStates = []; // 棒グラフ用の状態配列
+
+            const currentGap = state.gap; // 現在のギャップ値
+
+            if (currentSelectsInRow) {
+                currentSelectsInRow.forEach((selectEl, colIndex) => {
+                    selectEl.value = String(arrToDisplay[colIndex]); // selectの値を更新
+
+                    // 基本のサブグループ色
+                    let sublistIdForBaseColor = colIndex % currentGap;
+                    let cellStateClassesForSelect = [SHELL_SUBGROUP_COLORS[sublistIdForBaseColor % SHELL_SUBGROUP_COLORS.length]];
+                    let cellStateClassesForBar = [SHELL_SUBGROUP_COLORS[sublistIdForBaseColor % SHELL_SUBGROUP_COLORS.length]];
+
+                    // ギャップ処理が完了していなければ、ハイライト情報を適用
+                    if (!isGapComplete) {
+                        const highlightInfo = state.highlights.find(h => h.index === colIndex);
+                        if (highlightInfo) {
+                            // state-key-active などが基本色を上書きするように追加
+                            cellStateClassesForSelect.push(highlightInfo.type);
+                            cellStateClassesForBar.push(highlightInfo.type);
+                        }
+                    }
+
+                    // select要素から古い特殊クラス（アクティブ系）を削除
+                    const specialClasses = ['state-key-active', 'state-compare-active', 'state-shifting'];
+                    selectEl.classList.remove(...specialClasses);
+                    // 新しいクラス（基本色 + ハイライト色）を適用
+                    cellStateClassesForSelect.forEach(cls => {
+                        if (cls) selectEl.classList.add(cls);
+                    });
+
+                    barElementStates[colIndex] = cellStateClassesForBar.filter(Boolean); // 棒グラフ用状態も設定
+                });
+            }
+            renderBarGraph(arrToDisplay, barElementStates); // 棒グラフを更新
+        }
+
+
+        function handleReset() {
+            shell_initializeSortProcess(); // 初期化処理を呼び出す
+        }
+
+        function handleSpeedChange() {
+            const sliderValue = parseInt(speedRange.value, 10); // スライダーの値 (1-20)
+            const multiplier = sliderValue / 10.0; // 0.1倍から2.0倍の乗数
+
+            actualDelayMs = BASE_SPEED_MS / multiplier; // 実際の遅延時間を計算
+
+            if (speedValueDisplay) {
+                speedValueDisplay.textContent = `x${multiplier.toFixed(1)} `; // 表示を更新
+            }
+
+            // 自動再生中なら、タイマーを新しい速度で再設定
+            if (isAutoPlaying) {
+                clearTimeout(autoPlayTimerId);
+                autoPlayTimerId = setTimeout(autoStep, actualDelayMs);
+            }
+        }
+
+        function initializeAll() {
+            // この関数はページロード時に一度だけ呼ばれる想定
+            shell_initializeSortProcess(); // ソートプロセスの初期化
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            playPauseButton = document.getElementById('playPauseButton');
+            resetButton = document.getElementById('resetButton');
+            speedRange = document.getElementById('speedRange');
+            speedValueDisplay = document.getElementById('speedValue');
+
+            // 初期速度設定
+            const initialSliderValue = parseInt(speedRange.value, 10);
+            const initialMultiplier = initialSliderValue / 10.0;
+            actualDelayMs = BASE_SPEED_MS / initialMultiplier;
+            if (speedValueDisplay) {
+                speedValueDisplay.textContent = `x${initialMultiplier.toFixed(1)} `;
+            }
+
+            // イベントリスナーの設定
+            if (playPauseButton) playPauseButton.addEventListener('click', toggleAutoPlay);
+            if (resetButton) resetButton.addEventListener('click', handleReset);
+            if (speedRange) speedRange.addEventListener('input', handleSpeedChange);
+
+            initializeAll(); // 全体の初期化処理
+        });
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>トランプ選択ソート視覚化 (右半分表示・調整版)</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            background-color: #FFF;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            align-items: center;
+            flex-direction: row;
+            justify-content: flex-end;
+            color: #333;
+        }
+        #img-container{
+            width:55%;
+        }
+
+        #app-container {
+            width: 45%;
+            height: 95%;
+            background-color: #ffffff;
+            border-radius: 10px 10px 10px 10px;
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+            margin-right: 20px;
+            max-width: 100%;
+        }
+
+        /* ★コントロールセクションのスタイル (位置変更後) */
+        #controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 15px 0;
+            margin-top: 15px;
+            /* ★status-messageとの間にマージン */
+            border-top: 1px solid #FFF;
+            /* ★border-bottomから変更 */
+            flex-wrap: wrap;
+        }
+
+        #controls button,
+        #controls div {
+            margin: 5px 10px;
+        }
+
+        #controls button {
+            padding: 10px 15px;
+            /* 少し小さく */
+            font-size: 15px;
+            /* 少し小さく */
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #f8f8f8;
+            transition: background-color 0.2s, box-shadow 0.2s;
+        }
+
+        #controls button:hover {
+            background-color: #e9e9e9;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #controls button:disabled {
+            background-color: #e0e0e0;
+            color: #999;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        #speed-control {
+            display: flex;
+            align-items: center;
+        }
+
+        #speed-control label {
+            margin-right: 8px;
+            font-size: 14px;
+            /* 少し小さく */
+        }
+
+        #speed-slider {
+            width: 100px;
+            /* 少し小さく */
+            margin-right: 8px;
+        }
+
+        #speed-value {
+            font-size: 14px;
+            /* 少し小さく */
+            min-width: 35px;
+        }
+
+        #card-display-area {
+            flex-grow: 1;
+            display: flex;
+            /* ★有効化: 垂直中央揃えのため */
+            align-items: center;
+            /* ★有効化: 垂直中央揃えのため */
+            justify-content: center;
+            /* 水平中央揃えのため */
+            position: relative;
+            overflow: hidden;
+            /* border: 1px dashed blue; */
+            /* デバッグ用 */
+        }
+
+        #card-container {
+            display: flex;
+            position: relative;
+            /* height はJSでCARD_HEIGHTに基づいて設定される */
+            /* border: 1px dashed red; */
+            /* デバッグ用 */
+        }
+
+        .card {
+            /* ★カードサイズを縮小 */
+            width: 80px;
+            /* カード幅 */
+            height: 120px;
+            /* カード高 */
+            position: absolute;
+            cursor: default;
+            user-select: none;
+            box-sizing: border-box;
+            background-color: #FFFFFF;
+            border: 1px solid #888;
+            border-radius: 7px;
+            /* 少し小さく */
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.15);
+            /* 少し小さく */
+            transition: transform 0.5s ease-in-out, border-color 0.3s, box-shadow 0.3s, background-color 0.3s;
+        }
+
+        .card-content-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            font-weight: bold;
+        }
+
+        .card-corner {
+            position: absolute;
+            line-height: 1.1;
+            text-align: center;
+        }
+
+        .card-corner .rank {
+            display: block;
+            font-family: "Yu Gothic", "游ゴシック体", "YuGothic", "游ゴシック", "ヒラギノ角ゴ ProN W3", "Hiragino Kaku Gothic ProN", "メイリオ", Meiryo, sans-serif;
+        }
+
+        .card-corner .suit {
+            display: block;
+        }
+
+        .card-corner.top-left {
+            top: 0.4em;
+            left: 0.4em;
+        }
+
+        /* 少し調整 */
+        .card-corner.bottom-right {
+            bottom: 0.4em;
+            right: 0.4em;
+            transform: rotate(180deg);
+        }
+
+        /* 少し調整 */
+
+        .card-main-suit {
+            font-weight: normal;
+        }
+
+        .suit-Spades,
+        .suit-Clubs {
+            color: black;
+        }
+
+        .suit-Hearts,
+        .suit-Diamonds {
+            color: red;
+        }
+
+        .highlight-current {
+            border: 2px solid orange;
+            /* 少し細く */
+            box-shadow: 0 0 8px orange;
+            background-color: #fff3e0;
+        }
+
+        .highlight-compare {
+            border: 2px solid dodgerblue;
+            /* 少し細く */
+            box-shadow: 0 0 8px dodgerblue;
+            background-color: #e3f2fd;
+        }
+
+        .highlight-min {
+            border: 2px solid crimson;
+            /* 少し細く */
+            box-shadow: 0 0 8px crimson;
+            background-color: #ffebee;
+        }
+
+        .highlight-swap {
+            box-shadow: 0 0 15px gold;
+            transform: scale(1.03);
+            background-color: #fffde7;
+        }
+
+        .sorted {
+            background-color: #e6ffe6;
+            border-color: #5cb85c;
+            /* 少し細く */
+        }
+
+        #status-message {
+            text-align: center;
+            padding: 10px 0;
+            /* 少し小さく */
+            font-size: 1em;
+            /* 少し小さく */
+            color: #555;
+            min-height: 20px;
+            /* 少し小さく */
+            border-top: 1px solid #e0e0e0;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="img-container">
+                    <img src="human_vs_computer.png" alt="trump" width="95%">
+    </div>
+    <div id="app-container">
+        <!-- ★HTML要素の順序変更 -->
+        <div id="card-display-area">
+            <div id="card-container">
+                <!-- カードがここにJavaScriptで挿入されます -->
+            </div>
+        </div>
+
+        <div id="status-message">初期状態。「実行開始」を押してください。</div>
+
+        <div id="controls">
+            <button id="start-btn">実行開始 ▶▶</button>
+            <button id="reset-btn">リセット ↺</button>
+            <div id="speed-control">
+                <label for="speed-slider">速度:</label>
+                <input type="range" id="speed-slider" min="0.2" max="2.5" step="0.1" value="1.0">
+                <span id="speed-value">x1.0</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const cardContainer = document.getElementById('card-container');
+        const startBtn = document.getElementById('start-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedValueSpan = document.getElementById('speed-value');
+        const statusMessage = document.getElementById('status-message');
+        const cardDisplayArea = document.getElementById('card-display-area');
+
+
+        const SUITS_DATA = { 'Spades': '♠', 'Diamonds': '♦', 'Clubs': '♣', 'Hearts': '♥' };
+        const RANK_VALUES = {
+            'A': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13
+        };
+        const RANK_SYMBOLS_ORDER = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+
+        let initialHandData = [];
+        let currentHandData = [];
+        let cardElements = [];
+        let isSorting = false;
+        let animationSpeedMultiplier = 1.0;
+        const BASE_ANIMATION_DELAY = 500;
+
+        // ★カードサイズ定数を変更
+        const CARD_WIDTH = 80;
+        const CARD_HEIGHT = 120;
+        const CARD_GAP = 15;
+
+        function createCardDataObject(suitName, rankSymbol) {
+            if (!SUITS_DATA[suitName] || !RANK_VALUES[rankSymbol]) {
+                console.error(`無効なカード: ${rankSymbol} of ${suitName}`);
+                return null;
+            }
+            return {
+                suit: suitName,
+                rank: rankSymbol,
+                value: RANK_VALUES[rankSymbol],
+                id: `${rankSymbol}-${suitName}-${Date.now()}`
+            };
+        }
+
+        function renderCardElement(cardData) {
+            const cardDiv = document.createElement('div');
+            cardDiv.classList.add('card');
+            cardDiv.dataset.id = cardData.id;
+
+            const suitSymbol = SUITS_DATA[cardData.suit];
+            const suitColorClass = (cardData.suit === 'Hearts' || cardData.suit === 'Diamonds') ? 'suit-Diamonds' : 'suit-Spades';
+
+            // ★フォントサイズを新しいカード幅に合わせて調整
+            const cornerFontSize = CARD_WIDTH * 0.2; // 調整 (元の0.18から少し比率を上げた)
+            const mainSuitFontSize = CARD_WIDTH * 0.6;  // 調整 (元の0.5から少し比率を上げた)
+
+            cardDiv.innerHTML = `
+              <div class="card-content-wrapper ${suitColorClass}" style="font-size: ${cornerFontSize}px;">
+                  <div class="card-corner top-left">
+                      <span class="rank">${cardData.rank}</span>
+                      <span class="suit">${suitSymbol}</span>
+                  </div>
+                  <div class="card-main-suit" style="font-size: ${mainSuitFontSize}px;">
+                      ${suitSymbol}
+                  </div>
+                  <div class="card-corner bottom-right">
+                      <span class="rank">${cardData.rank}</span>
+                      <span class="suit">${suitSymbol}</span>
+                  </div>
+              </div>
+            `;
+            return cardDiv;
+        }
+
+        function layoutCards() {
+            const numCards = cardElements.length;
+            if (numCards === 0) return;
+
+            // ★card-containerの高さをカードの高さに設定
+            cardContainer.style.height = CARD_HEIGHT + 'px';
+
+            const totalCardsWidth = numCards * CARD_WIDTH;
+            const totalGapsWidth = (numCards - 1) * CARD_GAP;
+            const totalArrangementWidth = totalCardsWidth + totalGapsWidth;
+
+            // card-containerを水平中央に配置 (card-display-areaがflex-justify-content:centerなので、これは不要になる)
+            // const containerStartX = (cardDisplayArea.offsetWidth - totalArrangementWidth) / 2;
+            // card-container自体の幅を設定
+            cardContainer.style.width = totalArrangementWidth + 'px';
+
+
+            cardElements.forEach((cardEl, index) => {
+                // translateXの基準がcard-containerの左端になるため、
+                // card-containerが中央揃えされることを前提に、indexからX位置を計算
+                const cardX = index * (CARD_WIDTH + CARD_GAP);
+                cardEl.style.transform = `translateX(${cardX}px)`;
+                // Y軸は card-container が align-items: center で中央に来るので、cardEl.style.top は不要
+                cardEl.style.zIndex = index;
+            });
+        }
+
+
+        function initializeSimulation() {
+            initialHandData = [
+                createCardDataObject('Spades', '9'),
+                createCardDataObject('Diamonds', 'J'),
+                createCardDataObject('Diamonds', '6'),
+                createCardDataObject('Clubs', '7'),
+                createCardDataObject('Hearts', '4')
+            ].filter(Boolean);
+
+
+            currentHandData = JSON.parse(JSON.stringify(initialHandData));
+
+            cardContainer.innerHTML = '';
+            cardElements = [];
+            currentHandData.forEach(cardData => {
+                const cardEl = renderCardElement(cardData);
+                cardElements.push(cardEl);
+                cardContainer.appendChild(cardEl);
+            });
+
+            layoutCards(); // ★これを呼ぶ前に cardContainer.style.height を設定したいので、layoutCards内で処理
+            statusMessage.textContent = '初期状態。「実行開始」を押してください。';
+            startBtn.disabled = false;
+            resetBtn.disabled = true;
+            isSorting = false;
+            cardElements.forEach(el => {
+                el.classList.remove('sorted', 'highlight-current', 'highlight-compare', 'highlight-min', 'highlight-swap');
+                // Reset background color to default if it was changed by highlight classes
+                el.style.backgroundColor = ''; // Or set to #FFFFFF if that's the default
+            });
+        }
+
+        function animationDelay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms * (1 / animationSpeedMultiplier)));
+        }
+
+        function highlightCard(index, className) {
+            removeAllHighlightsExceptSorted();
+            if (index >= 0 && index < cardElements.length) {
+                cardElements[index].classList.add(className);
+            }
+        }
+
+        function removeHighlightFromCard(index, className) {
+            if (index >= 0 && index < cardElements.length) {
+                cardElements[index].classList.remove(className);
+                // If no other highlight class remains, reset background.
+                // This is tricky if multiple highlights could apply background colors.
+                // Simpler: removeAllHighlightsExceptSorted should handle resetting non-sorted card backgrounds.
+            }
+        }
+
+        function removeAllHighlightsExceptSorted() {
+            cardElements.forEach(el => {
+                if (!el.classList.contains('sorted')) {
+                    el.classList.remove('highlight-current', 'highlight-compare', 'highlight-min', 'highlight-swap');
+                    // el.style.backgroundColor = ''; // Reset background if not sorted. This is handled by class removal.
+                } else {
+                    // Sorted cards might have other highlights temporarily (like current being sorted)
+                    // For simplicity, if it's sorted, keep sorted style primarily.
+                    // Or, ensure highlight styles override sorted if necessary.
+                    // Current approach: highlight styles have their own background, so they override .sorted's bg.
+                    // When highlight is removed, if .sorted is present, its bg will show. If not, default bg.
+                    el.classList.remove('highlight-current', 'highlight-compare', 'highlight-min', 'highlight-swap');
+                }
+            });
+        }
+
+
+        async function swapCardsVisually(idx1, idx2) {
+            statusMessage.textContent = `交換中: ${currentHandData[idx1].rank}${SUITS_DATA[currentHandData[idx1].suit]} と ${currentHandData[idx2].rank}${SUITS_DATA[currentHandData[idx2].suit]}`;
+
+            const cardEl1 = cardElements[idx1];
+            const cardEl2 = cardElements[idx2];
+
+            cardEl1.classList.add('highlight-swap');
+            cardEl2.classList.add('highlight-swap');
+            await animationDelay(BASE_ANIMATION_DELAY / 2);
+
+            const transform1 = cardEl1.style.transform;
+            const transform2 = cardEl2.style.transform;
+
+            cardEl1.style.zIndex = currentHandData.length + 1;
+            cardEl2.style.zIndex = currentHandData.length;
+
+            cardEl1.style.transform = transform2;
+            cardEl2.style.transform = transform1;
+
+            [cardElements[idx1], cardElements[idx2]] = [cardElements[idx2], cardElements[idx1]];
+            [currentHandData[idx1], currentHandData[idx2]] = [currentHandData[idx2], currentHandData[idx1]];
+
+            await animationDelay(BASE_ANIMATION_DELAY);
+
+            cardElements[idx1].classList.remove('highlight-swap');
+            cardElements[idx2].classList.remove('highlight-swap');
+
+            cardElements[idx1].style.zIndex = idx1;
+            cardElements[idx2].style.zIndex = idx2;
+        }
+
+
+        async function runSelectionSortAnimation() {
+            isSorting = true;
+            startBtn.disabled = true;
+            resetBtn.disabled = true;
+            statusMessage.textContent = 'ソート実行中...';
+
+            const n = currentHandData.length;
+            for (let i = 0; i < n - 1; i++) {
+                let minIndex = i;
+
+                removeAllHighlightsExceptSorted();
+                highlightCard(i, 'highlight-current');
+                statusMessage.textContent = `ステップ ${i + 1}: ${currentHandData[i].rank}${SUITS_DATA[currentHandData[i].suit]} から最小値を探します`;
+                await animationDelay(BASE_ANIMATION_DELAY * 0.8);
+
+                // If current card (i) is already sorted, its 'sorted' class should remain.
+                // highlightCard might need to temporarily override sorted bg.
+                // current/min highlight is applied to i first.
+                if (cardElements[i].classList.contains('sorted')) {
+                    // Temporarily remove sorted if highlight-current needs to dominate visually
+                    // Or ensure highlight-current CSS has higher specificity for background
+                }
+                highlightCard(minIndex, 'highlight-min'); // minIndex is initially i
+                await animationDelay(BASE_ANIMATION_DELAY * 0.8);
+
+                for (let j = i + 1; j < n; j++) {
+                    // Clear previous comparison highlight, but not min or current
+                    cardElements.forEach((el, elIdx) => {
+                        if (elIdx !== minIndex && elIdx !== i) {
+                            el.classList.remove('highlight-compare');
+                        }
+                    });
+
+                    highlightCard(j, 'highlight-compare');
+                    statusMessage.textContent = `比較: ${currentHandData[minIndex].rank}${SUITS_DATA[currentHandData[minIndex].suit]} (現最小) vs ${currentHandData[j].rank}${SUITS_DATA[currentHandData[j].suit]}`;
+                    await animationDelay(BASE_ANIMATION_DELAY);
+
+                    if (currentHandData[j].value < currentHandData[minIndex].value) {
+                        if (minIndex !== i) { // if minIndex was not the current 'i' card
+                            removeHighlightFromCard(minIndex, 'highlight-min'); // remove old min highlight
+                        } else { // if minIndex was 'i', it's now 'highlight-current' AND 'highlight-min', remove 'highlight-min'
+                            removeHighlightFromCard(i, 'highlight-min');
+                        }
+                        minIndex = j;
+                        highlightCard(minIndex, 'highlight-min');
+                        statusMessage.textContent = `新しい最小値候補: ${currentHandData[minIndex].rank}${SUITS_DATA[currentHandData[minIndex].suit]}`;
+                        await animationDelay(BASE_ANIMATION_DELAY);
+                    }
+                }
+                // Clear final comparison highlight from j loop
+                cardElements.forEach((el, elIdx) => {
+                    if (elIdx !== minIndex && elIdx !== i) { // Don't clear min or current
+                        el.classList.remove('highlight-compare');
+                    }
+                });
+
+
+                if (minIndex !== i) {
+                    statusMessage.textContent = `ステップ ${i + 1} の最小値は ${currentHandData[minIndex].rank}${SUITS_DATA[currentHandData[minIndex].suit]}。交換します。`;
+                    // Before swap, ensure current 'i' card's specific highlight is 'highlight-current'
+                    // and minIndex card's specific highlight is 'highlight-min'
+                    removeAllHighlightsExceptSorted(); // Clean slate before swap highlights
+                    highlightCard(i, 'highlight-current'); // Re-assert current
+                    highlightCard(minIndex, 'highlight-min'); // Re-assert min
+                    await animationDelay(BASE_ANIMATION_DELAY / 2);
+                    await swapCardsVisually(i, minIndex);
+                } else {
+                    statusMessage.textContent = `${currentHandData[i].rank}${SUITS_DATA[currentHandData[i].suit]} は既に正しい位置です。`;
+                    await animationDelay(BASE_ANIMATION_DELAY);
+                }
+                removeAllHighlightsExceptSorted();
+                cardElements[i].classList.add('sorted');
+            }
+            if (n > 0) cardElements[n - 1].classList.add('sorted');
+
+            statusMessage.textContent = 'ソート完了！';
+            isSorting = false;
+            resetBtn.disabled = false;
+            startBtn.disabled = false;
+        }
+
+        startBtn.addEventListener('click', () => {
+            if (!isSorting) {
+                // currentHandData = JSON.parse(JSON.stringify(initialHandData)); // 常に初期から
+                initializeSimulation();
+                runSelectionSortAnimation();
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            if (!isSorting) {
+                initializeSimulation();
+            }
+        });
+
+        speedSlider.addEventListener('input', (e) => {
+            animationSpeedMultiplier = parseFloat(e.target.value);
+            speedValueSpan.textContent = `x${animationSpeedMultiplier.toFixed(1)}`;
+        });
+
+        window.addEventListener('resize', () => {
+            if (!isSorting) {
+                layoutCards();
+            }
+        });
+
+        initializeSimulation();
+
+    </script>
+</body>
+
+</html>

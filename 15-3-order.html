@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ソートアルゴリズム性能比較</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Direct Label Plugin (カスタム実装) はScript内に含めます -->
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+            background-color: #f4f4f4;
+            height: 100vh; /* Ensure body takes full viewport height */
+            box-sizing: border-box;
+            overflow: hidden; /* Prevent body scrollbars if content fits */
+        }
+        h1 {
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            color: #333;
+            flex-shrink: 0; /* Prevent title from shrinking */
+        }
+        #controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px 30px; /* 縦横の隙間を調整 */
+            width: 100%; /* 幅100% */
+            width: 90vw; /* 最大幅 */
+            padding: 15px 20px; /* Padding調整 */
+            box-sizing: border-box;
+            flex-shrink: 0;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05); /* わずかな影 */
+        }
+
+        .controls-left {
+            display: flex;
+            align-items: center;
+            gap: 25px; /* 要素間の隙間 */
+            flex-wrap: wrap;
+            flex-grow: 1;
+            justify-content: flex-start; /* 左寄せ */
+        }
+
+        .controls-right {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            flex-shrink: 0;
+            min-width: 250px; /* ステータス表示に十分な幅 */
+        }
+
+        /* --- コントロールグループ (ラベル + スライダー) のスタイル変更 --- */
+        .control-group {
+            display: flex;
+            flex-direction: row; /* 横並び */
+            align-items: center; /* 垂直中央揃え */
+            gap: 10px; /* ラベルとスライダーの隙間 */
+        }
+
+        .control-group label {
+            font-size: 0.9em;
+            color: #495057;
+            white-space: nowrap;
+            display: flex;
+            align-items: baseline;
+            gap: 6px; /* ラベルテキストと値の間の隙間 */
+        }
+
+        /* ラベル内の値を少し太字に */
+        .control-group label span {
+             font-weight: 600;
+        }
+
+        .control-group input[type="range"] {
+            width: 120px; /* スライダー幅調整 */
+            cursor: pointer;
+            /* スライダーのつまみやトラックのカスタムは省略 */
+            vertical-align: middle; /* 他要素と垂直位置を揃える */
+        }
+
+        /* --- ボタンのスタイル変更 --- */
+        button {
+            padding: 8px 25px; /* Padding調整 */
+            font-size: 0.95em;
+            font-weight: 500;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px; /* 角丸調整 */
+            transition: background-color 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        button:disabled {
+            background-color: #adb5bd; /* 無効時の色変更 */
+            cursor: not-allowed;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+
+        /* --- ステータス表示のスタイル変更 --- */
+        #status {
+            font-weight: 600;
+            min-height: 1.2em;
+            color: #495057;
+            text-align: right;
+            width: 100%;
+            font-size: 1em;
+        }
+        .main-container {
+            display: flex;
+            flex-wrap: nowrap; /* Prevent wrapping */
+            width: 98%;
+            max-width: 1600px;
+            flex-grow: 1; /* Take remaining vertical space */
+            min-height: 0; /* Important for flex-grow in flex column */
+            gap: 20px;
+            margin-bottom: 15px; /* Add some bottom margin */
+        }
+        .chart-wrapper {
+            position: relative;
+            flex: 1; /* Take half width */
+            min-width: 45%; /* Ensure minimum width, adjust as needed */
+            height: 100%; /* Fill parent height */
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 15px;
+            box-sizing: border-box;
+            display: flex; /* Use flex for vertical alignment */
+            flex-direction: column; /* Stack title and chart vertically */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .chart-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+            color: #444;
+            flex-shrink: 0;
+            height: 1.5em;
+        }
+        #lineChart-wrapper .canvas-container {
+             position: relative;
+             flex-grow: 1;
+             min-height: 0;
+             width: 100%;
+        }
+        #lineChart-wrapper canvas {
+             position: absolute;
+             top: 0;
+             left: 0;
+             width: 100% !important;
+             height: 100% !important;
+        }
+        #histogram-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            width: 100%;
+            flex-grow: 1;
+            min-height: 0;
+        }
+         #histogram-grid .histogram-item {
+             width: 100%;
+             height: 100%;
+             display: flex;
+             flex-direction: column;
+             align-items: center;
+             border: 1px solid #eee;
+             border-radius: 4px;
+             padding: 5px;
+             box-sizing: border-box;
+             position: relative;
+             overflow: hidden;
+         }
+         .histogram-item .hist-title {
+             font-size: 0.8em;
+             font-weight: bold;
+             margin-bottom: 3px;
+             white-space: nowrap;
+             color: #555;
+             flex-shrink: 0;
+         }
+         .histogram-item .hist-canvas-container {
+             width: 100%;
+             flex-grow: 1;
+             min-height: 0;
+             position: relative;
+         }
+         .histogram-item canvas {
+             display: block;
+             position: absolute;
+             top: 0;
+             left: 0;
+             width: 100% !important;
+             height: 100% !important;
+         }
+         #right-placeholder {
+             display: flex;
+             justify-content: center;
+             align-items: center;
+             width: 100%;
+             height: 100%;
+             font-size: 1.2em;
+             color: #888;
+             flex-grow: 1;
+         }
+        button {
+            padding: 10px 20px;
+            font-size: 15px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.2s ease;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+         button:hover:not(:disabled) {
+             background-color: #0056b3;
+         }
+         
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <!-- Left Chart: Cumulative Time -->
+        <div class="chart-wrapper" id="lineChart-wrapper">
+            <div class="chart-title">試行回数 vs 累積実行時間</div>
+            <div class="canvas-container">
+                <canvas id="lineChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Right Area: Histograms (Grid) -->
+        <div class="chart-wrapper" id="right-chart-wrapper">
+            <div class="chart-title">実行時間ヒストグラム</div>
+            <div id="histogram-grid" style="display: none;">
+                <div class="histogram-item" id="hist-item-0"><div class="hist-title"></div><div class="hist-canvas-container"><canvas id="hist-canvas-0"></canvas></div></div>
+                <div class="histogram-item" id="hist-item-1"><div class="hist-title"></div><div class="hist-canvas-container"><canvas id="hist-canvas-1"></canvas></div></div>
+                <div class="histogram-item" id="hist-item-2"><div class="hist-title"></div><div class="hist-canvas-container"><canvas id="hist-canvas-2"></canvas></div></div>
+                <div class="histogram-item" id="hist-item-3"><div class="hist-title"></div><div class="hist-canvas-container"><canvas id="hist-canvas-3"></canvas></div></div>
+                <div class="histogram-item" id="hist-item-4"><div class="hist-title"></div><div class="hist-canvas-container"><canvas id="hist-canvas-4"></canvas></div></div>
+                <div class="histogram-item" id="hist-item-5"><div class="hist-title"></div><div class="hist-canvas-container"><canvas id="hist-canvas-5"></canvas></div></div>
+            </div>
+             <div id="right-placeholder" style="display: flex;">測定完了後に表示されます</div>
+        </div>
+    </div>
+    <div id="controls">
+        <!-- 左側の要素 (スライダーとボタン) -->
+        <div class="controls-left">
+            <div class="control-group">
+                <label for="numItemsSlider">データ件数: <span id="numItemsValueLabel">100</span></label>
+                <input type="range" id="numItemsSlider" min="100" max="10000" value="1000" step="100">
+            </div>
+            <div class="control-group">
+                <!-- toLocaleString()を使うのでカンマは自動 -->
+                <label for="numTrialsSlider">試行回数: <span id="numTrialsValueLabel">10000</span></label>
+                <input type="range" id="numTrialsSlider" min="100" max="200000" value="1000" step="100">
+            </div>
+            <button id="startButton">測定開始</button>
+        </div>
+        <!-- 右側の要素 (ステータス) -->
+        <div class="controls-right">
+            <div id="status">準備完了</div>
+        </div>
+    </div>
+
+    <script>
+        // --- 定数, DOM要素, グローバル変数, アルゴリズム定義 ---
+        let NUM_ITEMS; // 初期値は initializeControlValues で設定
+        let NUM_TRIALS; // 初期値は initializeControlValues で設定
+        const STRING_LENGTH = 8; // 固定
+        const UPDATE_INTERVAL = 150; // グラフ更新頻度（試行回数）
+        const HISTOGRAM_BINS = 15;
+
+        const statusDiv = document.getElementById('status');
+        const startButton = document.getElementById('startButton');
+        const lineCtx = document.getElementById('lineChart').getContext('2d');
+        const histogramGrid = document.getElementById('histogram-grid');
+        const rightPlaceholder = document.getElementById('right-placeholder');
+
+        // スライダーコントロール用のDOM要素
+        const numItemsSlider = document.getElementById('numItemsSlider');
+        const numItemsValueLabel = document.getElementById('numItemsValueLabel');
+        const numTrialsSlider = document.getElementById('numTrialsSlider');
+        const numTrialsValueLabel = document.getElementById('numTrialsValueLabel');
+
+        const histCanvases = [];
+        const histTitles = [];
+        for (let i = 0; i < 6; i++) {
+             histCanvases.push(document.getElementById(`hist-canvas-${i}`).getContext('2d'));
+             histTitles.push(document.querySelector(`#hist-item-${i} .hist-title`));
+        }
+
+        let lineChart;
+        let histogramCharts = [];
+        let isRunning = false;
+        let allTrialTimes = {};
+        let simulationData = {};
+
+        const algorithms = [
+            { name: 'バブルソート', func: bubbleSort, color: 'rgba(255, 99, 132, 1)' },
+            { name: '選択ソート', func: selectionSort, color: 'rgba(255, 159, 64, 1)' },
+            { name: '挿入ソート', func: insertionSort, color: 'rgba(255, 205, 86, 1)' },
+            { name: 'シェルソート', func: shellSort, color: 'rgba(75, 192, 192, 1)' },
+            { name: 'マージソート', func: mergeSort, color: 'rgba(54, 162, 235, 1)' },
+            { name: 'クイックソート', func: quickSort, color: 'rgba(153, 102, 255, 1)' }
+        ];
+
+        // --- ヘルパー関数 (generateRandomString, generateRandomStringArray) ---
+        function generateRandomString(length) { const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'; let result = ''; const charactersLength = characters.length; for (let i = 0; i < length; i++) { result += characters.charAt(Math.floor(Math.random() * charactersLength)); } return result; }
+        function generateRandomStringArray(count, length) { const arr = new Array(count); for (let i = 0; i < count; i++) { arr[i] = generateRandomString(length); } return arr; }
+
+        // --- ソート関数実装 ---
+        function selectionSort(arr) { const n = arr.length; for (let i = 0; i < n - 1; i++) { let minIdx = i; for (let j = i + 1; j < n; j++) { if (arr[j] < arr[minIdx]) minIdx = j; } if (minIdx !== i) [arr[i], arr[minIdx]] = [arr[minIdx], arr[i]]; } }
+        function insertionSort(arr) { const n = arr.length; for (let i = 1; i < n; i++) { const current = arr[i]; let j = i - 1; while (j >= 0 && arr[j] > current) { arr[j + 1] = arr[j]; j--; } arr[j + 1] = current; } }
+        function bubbleSort(arr) { const n = arr.length; let swapped; for (let i = 0; i < n - 1; i++) { swapped = false; for (let j = 0; j < n - 1 - i; j++) { if (arr[j] > arr[j + 1]) { [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]]; swapped = true; } } if (!swapped) break; } }
+        function shellSort(arr) { const n = arr.length; const gaps = [701, 301, 132, 57, 23, 10, 4, 1]; for (let gap of gaps) { if (gap >= n) continue; for (let i = gap; i < n; i++) { let temp = arr[i]; let j = i; while (j >= gap && arr[j - gap] > temp) { arr[j] = arr[j - gap]; j -= gap; } arr[j] = temp; } } }
+        function mergeSort(arr) { if (arr.length <= 1) return arr; const mid = Math.floor(arr.length / 2); const left = arr.slice(0, mid); const right = arr.slice(mid); return merge(mergeSort(left), mergeSort(right)); }
+        function merge(left, right) { let resultArray = [], leftIndex = 0, rightIndex = 0; while (leftIndex < left.length && rightIndex < right.length) { if (left[leftIndex] < right[rightIndex]) { resultArray.push(left[leftIndex]); leftIndex++; } else { resultArray.push(right[rightIndex]); rightIndex++; } } return resultArray.concat(left.slice(leftIndex)).concat(right.slice(rightIndex)); }
+        function quickSort(arr, left = 0, right = arr.length - 1) { if (left >= right) return; const pivotIndex = partitionHoare(arr, left, right); quickSort(arr, left, pivotIndex); quickSort(arr, pivotIndex + 1, right); }
+        function partitionHoare(arr, left, right) { const pivotIndex = Math.floor(Math.random() * (right - left + 1)) + left; const pivot = arr[pivotIndex]; [arr[pivotIndex], arr[left]] = [arr[left], arr[pivotIndex]]; let i = left + 1; let j = right; while (true) { while (i <= j && arr[i] < pivot) i++; while (i <= j && arr[j] > pivot) j--; if (i > j) break; [arr[i], arr[j]] = [arr[j], arr[i]]; i++; j--; } [arr[left], arr[j]] = [arr[j], arr[left]]; return j; }
+
+        // --- Chart.js Direct Label Plugin ---
+        const directLabelPlugin = { id: 'directLabel', afterDatasetsDraw(chart, args, options) { const { ctx, chartArea: { top, bottom, left, right }, scales: { x, y } } = chart; ctx.save(); ctx.font = options.font || 'bold 11px sans-serif'; const padding = options.padding || 5; chart.data.datasets.forEach((dataset, i) => { if (!dataset.data || dataset.data.length === 0 || dataset.hidden) { return; } const meta = chart.getDatasetMeta(i); if (!meta.data || meta.data.length === 0) { return; } const lastPoint = meta.data[meta.data.length - 1]; if (lastPoint) { const labelY = Math.max(top + 6, Math.min(bottom - 6, lastPoint.y)); let labelX = right + padding; ctx.fillStyle = dataset.borderColor || 'black'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(dataset.label, labelX, labelY); } }); ctx.restore(); } };
+
+        // --- スライダー初期値設定とイベントリスナー ---
+        function initializeControlValues() {
+            NUM_ITEMS = parseInt(numItemsSlider.value);
+            numItemsValueLabel.textContent = NUM_ITEMS;
+            NUM_TRIALS = parseInt(numTrialsSlider.value);
+            numTrialsValueLabel.textContent = NUM_TRIALS.toLocaleString();
+
+            numItemsSlider.addEventListener('input', (event) => {
+                NUM_ITEMS = parseInt(event.target.value);
+                numItemsValueLabel.textContent = NUM_ITEMS;
+            });
+
+            numTrialsSlider.addEventListener('input', (event) => {
+                NUM_TRIALS = parseInt(event.target.value);
+                numTrialsValueLabel.textContent = NUM_TRIALS.toLocaleString();
+            });
+        }
+
+        // --- グラフ初期化 ---
+        function initializeCharts() {
+            if (lineChart) lineChart.destroy();
+            histogramCharts.forEach(chart => { if (chart) chart.destroy(); });
+            histogramCharts = [];
+
+            const lineChartData = { labels: [], datasets: algorithms.map(algo => ({ label: algo.name, data: [], borderColor: algo.color, backgroundColor: algo.color.replace('1)', '0.1)'), borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 })) };
+            const lineChartOptions = { responsive: true, maintainAspectRatio: false, animation: false, scales: { x: { type: 'linear', title: { display: true, text: '試行回数' } }, y: { title: { display: true, text: '累積実行時間 (ミリ秒)' }, beginAtZero: true } }, layout: { padding: { right: 90 } }, plugins: { legend: { display: false }, directLabel: { font: 'bold 11px sans-serif', padding: 5 } } };
+            lineChart = new Chart(lineCtx, { type: 'line', data: lineChartData, options: lineChartOptions, plugins: [directLabelPlugin] });
+
+            histogramGrid.style.display = 'none';
+            rightPlaceholder.style.display = 'flex';
+            histTitles.forEach(title => title.textContent = ''); // Clear old titles
+        }
+
+        // --- ヒストグラム生成 & 表示 ---
+        function createHistogramData(times, numBins) {
+             if (!times || times.length === 0) return { labels: [], data: [] };
+             const sortedTimes = [...times].sort((a, b) => a - b);
+             const minTime = sortedTimes[0];
+             const percentile99 = sortedTimes[Math.floor(sortedTimes.length * 0.99)];
+             let maxTime = percentile99;
+             if (maxTime <= minTime) { maxTime = minTime > 0 ? minTime * 1.2 : 1; }
+             if(maxTime === minTime && minTime !== 0) maxTime = minTime * 1.1;
+             else if (maxTime === minTime && minTime === 0) maxTime = 0.1;
+             const range = maxTime - minTime;
+             if (range <= 0) { return { labels: [`${minTime.toFixed(3)}ms`], data: [times.length] }; }
+             const binWidth = range / numBins;
+             const bins = new Array(numBins).fill(0);
+             const labels = new Array(numBins);
+             for (let i = 0; i < numBins; i++) { const binEnd = minTime + (i + 1) * binWidth; labels[i] = `${(binEnd).toFixed(3)}`; }
+             for (const time of times) { if (time > maxTime + binWidth * 0.01) continue; let binIndex = Math.floor((time - minTime) / binWidth); if (binIndex >= numBins) binIndex = numBins - 1; if (binIndex < 0) binIndex = 0; bins[binIndex]++; }
+             return { labels, data: bins };
+        }
+
+        function displayAllHistograms() {
+             histogramGrid.style.display = 'grid';
+             rightPlaceholder.style.display = 'none';
+             histogramCharts.forEach(chart => { if (chart) chart.destroy(); });
+             histogramCharts = [];
+
+             algorithms.forEach((algo, index) => {
+                 if (!allTrialTimes[algo.name] || index >= histCanvases.length) return;
+                 const times = allTrialTimes[algo.name];
+                 const { labels, data } = createHistogramData(times, HISTOGRAM_BINS);
+                 const avgTime = simulationData.avgTimes[index];
+                 histTitles[index].textContent = `${algo.name} (Avg: ${avgTime.toFixed(3)}ms)`;
+                 histTitles[index].style.color = algo.color;
+                 const histogramData = { labels: labels, datasets: [{ label: `実行回数`, data: data, backgroundColor: algo.color.replace('1)', '0.7)'), borderColor: algo.color, borderWidth: 1, barPercentage: 1.0, categoryPercentage: 0.95 }] };
+                 const histogramOptions = { responsive: true, maintainAspectRatio: false, animation: false, scales: { x: { ticks: { autoSkip: true, maxRotation: 0, font: { size: 9 } } }, y: { beginAtZero: true, ticks: { font: { size: 9 } } } }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: () => `${algo.name}`, label: (context) => `Max ${context.label}ms: ${context.parsed.y} 回` } } } };
+                 histogramCharts[index] = new Chart(histCanvases[index], { type: 'bar', data: histogramData, options: histogramOptions });
+             });
+        }
+
+        // --- シミュレーション実行 ---
+        async function runSimulation() {
+             if (isRunning) return;
+             isRunning = true;
+             startButton.disabled = true;
+             numItemsSlider.disabled = true; // Disable sliders during simulation
+             numTrialsSlider.disabled = true;
+             startButton.textContent = "測定中...";
+             statusDiv.textContent = "測定準備中...";
+
+             initializeCharts(); // Re-initialize charts with current settings
+
+             simulationData = { totalTimes: algorithms.map(() => 0), avgTimes: algorithms.map(() => 0) };
+             allTrialTimes = {};
+             // NUM_TRIALS を使用して配列を初期化
+             algorithms.forEach(algo => { allTrialTimes[algo.name] = new Array(NUM_TRIALS); });
+             let cumulativeTimes = algorithms.map(() => []);
+
+             await new Promise(resolve => setTimeout(resolve, 50)); // UI update time
+
+             statusDiv.textContent = `試行 0/${NUM_TRIALS.toLocaleString()} 実行中...`;
+             const overallStartTime = performance.now();
+             let lastUpdateTime = overallStartTime;
+
+             for (let trial = 0; trial < NUM_TRIALS; trial++) {
+                 // NUM_ITEMS を使用してデータを生成
+                 const baseData = generateRandomStringArray(NUM_ITEMS, STRING_LENGTH);
+                 for (let i = 0; i < algorithms.length; i++) {
+                     const algo = algorithms[i];
+                     const dataToSort = [...baseData];
+                     const t0 = performance.now();
+                     algo.func(dataToSort);
+                     const t1 = performance.now();
+                     const duration = t1 - t0;
+                     simulationData.totalTimes[i] += duration;
+                     allTrialTimes[algo.name][trial] = duration;
+                 }
+
+                 const now = performance.now();
+                 // UPDATE_INTERVAL ごと、または200ms経過、または最終試行時にグラフ更新
+                 if (trial === NUM_TRIALS - 1 || (trial + 1) % UPDATE_INTERVAL === 0 || (now - lastUpdateTime > 200)) {
+                     lastUpdateTime = now;
+                     statusDiv.textContent = `試行 ${ (trial + 1).toLocaleString()}/${NUM_TRIALS.toLocaleString()} 実行中...`;
+                     for (let i = 0; i < algorithms.length; i++) {
+                         if (cumulativeTimes[i].length > 0 && cumulativeTimes[i][cumulativeTimes[i].length - 1].x === trial + 1) {
+                             cumulativeTimes[i][cumulativeTimes[i].length - 1].y = simulationData.totalTimes[i];
+                         } else {
+                            cumulativeTimes[i].push({ x: trial + 1, y: simulationData.totalTimes[i] });
+                         }
+                         lineChart.data.datasets[i].data = cumulativeTimes[i];
+                     }
+                     if (lineChart) {
+                         lineChart.update('none');
+                     }
+                     await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to breathe
+                 }
+             }
+
+             const overallEndTime = performance.now();
+             const totalDurationSeconds = (overallEndTime - overallStartTime) / 1000;
+
+             for (let i = 0; i < algorithms.length; i++) {
+                 simulationData.avgTimes[i] = simulationData.totalTimes[i] / NUM_TRIALS;
+             }
+
+             statusDiv.textContent = `完了！ ${NUM_TRIALS.toLocaleString()}回試行 合計時間: ${totalDurationSeconds.toFixed(2)}秒`;
+             displayAllHistograms();
+
+             isRunning = false;
+             startButton.disabled = false;
+             numItemsSlider.disabled = false; // Re-enable sliders
+             numTrialsSlider.disabled = false;
+             startButton.textContent = "測定開始";
+         }
+
+        // --- イベントリスナー ---
+        startButton.addEventListener('click', runSimulation);
+
+        // --- 初期化 ---
+        initializeControlValues(); // スライダーの値を設定
+        initializeCharts();      // グラフを初期描画
+    </script>
+</body>
+</html>

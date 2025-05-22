@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模擬授業スライド</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            /* WindowsとMacで一般的に利用可能で見栄えの良いゴシック体、画像に近いものを優先 */
+            font-family: '游ゴシック', Arial, 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN W3', 'Hiragino Sans', 'ヒラギノ角ゴシック', Meiryo, 'メイリオ', 'Yu Gothic', 'MS PGothic', 'ＭＳ Ｐゴシック', sans-serif;
+            background-color: #ffffff;
+            color: #000000; /* デフォルトの文字色を黒に */
+        }
+
+        .slide-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .sidebar {
+            background-color: #005BAC; /* 画像から抽出した青色に近い色 */
+            width: 88px; /* 画像の左端の帯の幅を精密に調整 */
+            height: 100%;
+            flex-shrink: 0; /* サイドバーが縮まないようにする */
+        }
+
+        .main-content {
+            flex-grow: 1;
+            /*
+              パディング調整:
+              - top: コース情報の上マージン
+              - left: コース情報とタイトルの左マージン (青帯からの距離)。
+                      画像では青帯の幅よりやや狭い印象。
+              - bottom, right: コンテンツエリアの右下余白。フッターは別途絶対配置。
+            */
+            padding: 320px 30px 50px 50px; /* 上 右 下 左 */
+            position: relative; /* フッターの位置決めの基準 */
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start; /* 要素を上から配置 */
+        }
+
+        .course-info {
+            font-size: 25px; /* 文字サイズを微調整 */
+            color: #000000;
+            margin-bottom: 25px; /* タイトルとの間隔を微調整 (コース情報の約2.5倍高) */
+            letter-spacing: 0.01em; /* わずかに文字間を調整して自然に見せる */
+            font-weight: bold; /* 太字 */
+        }
+
+        .title-container {
+            display: flex;
+            align-items: baseline; /* テキストのベースラインを揃える */
+        }
+
+        .title-primary {
+            font-size: 42px; /* 文字サイズを微調整 */
+            font-weight: bold; /* 太字 */
+            color: #000000;
+            margin-right: 30px; /* 「アルゴリズム」と次のテキストの間隔を微調整 */
+            line-height: 1.12; /* 行間をわずかに調整 */
+        }
+
+        .title-secondary {
+            font-size: 42px; /* 文字サイズを微調整 */
+            font-weight: bold; /* 太字 */
+            color: #000000;
+            line-height: 1.12; /* 行間をわずかに調整 */
+        }
+
+        .slide-footer {
+            position: absolute;
+            bottom: 60px; /* 下からの位置を微調整 (フッター文字高の約1.5~2倍) */
+            right: 250px;  /* 右からの位置を微調整 */
+            font-size: 20px; /* 文字サイズを微調整 */
+            color: #000000;
+            font-weight: bold; /* 太字 */
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-container">
+        <div class="sidebar"></div>
+        <div class="main-content">
+            <div class="course-info">
+                情報科教育法Ⅱ 模擬授業 (2025/06/03)
+            </div>
+
+            <div class="title-container">
+                <span class="title-primary">アルゴリズム</span>
+                <span class="title-secondary">効率的な情報の処理</span>
+            </div>
+
+            <div class="slide-footer">
+                B23-3105 小野田祐希
+            </div>
+        </div>
+    </div>
+</body>
+</html>

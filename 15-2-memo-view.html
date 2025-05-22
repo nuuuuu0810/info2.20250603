@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4分割画面</title>
+    <style>
+        /* ページのデフォルトマージンとパディングを削除 */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* メインページのスクロールバーを防止 */
+            font-family: sans-serif; /* Optional: for any text outside iframes */
+        }
+
+        /* グリッドコンテナーの設定 */
+        #grid-container {
+            display: grid;
+            /* 2つの均等な幅の列 */
+            grid-template-columns: 1fr 1fr;
+            /* 2つの均等な高さの行 */
+            grid-template-rows: 1fr 1fr;
+            width: 100vw; /* ビューポート幅全体 */
+            height: 100vh; /* ビューポート高さ全体 */
+            gap: 5px; /* Optional: グリッド間の隙間 */
+            background-color: #f0f0f0;
+        }
+
+        /* 各iframeを囲むラッパー（スケーリングのため） */
+        .iframe-wrapper {
+            position: relative; /* iframeの絶対配置の基準 */
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* はみ出したiframeを隠す */
+            background-color: #f0f0f0; /* Optional: iframeがロードされるまでの背景 */
+        }
+
+        /* iframeの基本スタイル */
+        .monitor-frame {
+            /* スケーリングの基点を左上に設定 */
+            transform-origin: top left;
+            /* 初期サイズ（元の解像度） */
+            width: 1440px;
+            height: 825px;
+             /* JavaScriptで動的にscaleを設定 */
+            transform: scale(0.5); /* 初期値（JSで上書きされる） */
+            border: none; /* iframeの境界線を削除 */
+
+            /* スケーリング時に位置を調整するために必要になる場合がある */
+            /* position: absolute;
+            top: 0;
+            left: 0; */
+        }
+    </style>
+</head>
+<body>
+
+    <div id="grid-container">
+        <div class="iframe-wrapper" id="wrapper1"><iframe id="frame1" class="monitor-frame" src="memo1.html" title="画面1"></iframe></div>
+        <div class="iframe-wrapper" id="wrapper2"><iframe id="frame2" class="monitor-frame" src="memo2.html" title="画面2"></iframe></div>
+        <div class="iframe-wrapper" id="wrapper3"><iframe id="frame3" class="monitor-frame" src="memo3.html" title="画面3"></iframe></div>
+        <div class="iframe-wrapper" id="wrapper4"><iframe id="frame4" class="monitor-frame" src="memo4.html" title="画面4"></iframe></div>
+    </div>
+
+    <script>
+        const targetWidth = 1440;
+        const targetHeight = 825;
+
+        function scaleIframes() {
+            const wrappers = document.querySelectorAll('.iframe-wrapper');
+
+            wrappers.forEach(wrapper => {
+                const iframe = wrapper.querySelector('.monitor-frame');
+                if (!iframe) return;
+
+                // ラッパー（表示領域）の実際のサイズを取得
+                const wrapperWidth = wrapper.offsetWidth;
+                const wrapperHeight = wrapper.offsetHeight;
+
+                // 幅と高さそれぞれでスケール率を計算
+                const scaleX = wrapperWidth / targetWidth;
+                const scaleY = wrapperHeight / targetHeight;
+
+                // 小さい方のスケール率を採用（全体が収まるように）
+                const scale = Math.min(scaleX, scaleY);
+
+                // iframeにスケールを適用
+                iframe.style.transform = `scale(${scale})`;
+
+                // --- オプション：中央揃え ---
+                // スケーリングによって生じる余白を計算し、中央に配置する場合
+                // const scaledWidth = targetWidth * scale;
+                // const scaledHeight = targetHeight * scale;
+                // const offsetX = (wrapperWidth - scaledWidth) / 2;
+                // const offsetY = (wrapperHeight - scaledHeight) / 2;
+                // iframe.style.position = 'absolute'; // 位置調整には絶対配置が必要
+                // iframe.style.left = `${offsetX}px`;
+                // iframe.style.top = `${offsetY}px`;
+                // ----------------------------
+            });
+        }
+
+        // 初期読み込み時とウィンドウリサイズ時にスケーリングを実行
+        window.addEventListener('load', scaleIframes);
+        window.addEventListener('resize', debounce(scaleIframes, 100)); // リサイズイベントを間引く
+
+        // Debounce関数（リサイズイベントの頻発防止）
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // 各iframeの読み込み完了後にも念のためスケール調整（特に初回ロード時）
+        document.querySelectorAll('.monitor-frame').forEach(iframe => {
+            iframe.addEventListener('load', () => {
+                // 個別のiframe読み込み完了でスケール再計算が必要か確認
+                // 場合によっては不要かもしれないが、コンテンツ依存でサイズが変わる場合に有効
+                 scaleIframes();
+             });
+        });
+
+    </script>
+
+</body>
+</html>
