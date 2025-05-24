@@ -74,7 +74,7 @@
             width: 220px; /* 円を大きく */
             height: 220px;
             border-radius: 50%;
-            background: conic-gradient(orange 0% 100%, #3a3a3c 100% 100%);
+            background: conic-gradient(red 0% 100%, #3a3a3c 100% 100%);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -155,11 +155,11 @@
             background-color: #444444;
         }
         .timer-btn-orange {
-            background-color: #ff9500;
+            background-color: red;
             color: white;
         }
         .timer-btn-orange:hover {
-            background-color: #e08500;
+            background-color: red;
         }
         /* === TIMER STYLES END === */
 
@@ -386,7 +386,7 @@
                 }
                 progressPercent = Math.max(0, Math.min(100, progressPercent));
                 
-                timerProgressCircleEl.style.background = `conic-gradient(orange 0% ${progressPercent}%, #3a3a3c ${progressPercent}% 100%)`;
+                timerProgressCircleEl.style.background = `conic-gradient(red 0% ${progressPercent}%, #3a3a3c ${progressPercent}% 100%)`;
             }
 
             function startTimer() {
@@ -407,7 +407,7 @@
                     timerTimeLeftEl.readOnly = false;
                     // secondsLeft is already 0, display is 00:00. No alert.
                     // プログレスバーを0%に確定
-                    timerProgressCircleEl.style.background = `conic-gradient(orange 0% 0%, #3a3a3c 0% 100%)`;
+                    timerProgressCircleEl.style.background = `conic-gradient(red 0% 0%, #3a3a3c 0% 100%)`;
                     return;
                 }
 
