@@ -469,9 +469,7 @@ header {
       });
     }
 
-
     // 付箋のDOM要素を作成してコンテナに追加する関数
-        // 付箋のDOM要素を作成してコンテナに追加する関数
     function createNoteElement(noteData, container) {
         if (!noteData || !noteData.id) {
             console.error("Invalid note data passed to createNoteElement:", noteData);
@@ -491,8 +489,34 @@ header {
       contentDiv.className = 'note-content';
       contentDiv.textContent = noteData.content;
       contentDiv.contentEditable = "true";
-      contentDiv.addEventListener('blur', (e) => { /* ...変更なし... */ });
-      contentDiv.addEventListener('keydown', (e) => { /* ...変更なし... */ });
+
+      // ▼▼▼ ここから修正 ▼▼▼
+      contentDiv.addEventListener('blur', (e) => {
+        const noteId = noteDiv.dataset.id; // 親要素から noteId を取得
+        const newContent = e.target.textContent; // 編集後のテキスト内容
+        const currentNoteData = notesOnBoard[noteId]?.data;
+
+        // 内容が実際に変更された場合のみ更新処理を行う
+        if (currentNoteData && currentNoteData.content !== newContent) {
+          updateNoteOnServer(noteId, { content: newContent });
+          // オプション: ローカルのキャッシュも即時更新する（Firebaseからの同期を待たずにUIに反映）
+          // ただし、Firebaseの 'value' イベントでも更新されるので、二重更新になる可能性に注意。
+          // この場合は、Firebaseのリアルタイム性を信頼して、この行はなくても良いかもしれません。
+          // notesOnBoard[noteId].data.content = newContent;
+        }
+      });
+
+      contentDiv.addEventListener('keydown', (e) => {
+        // 例えば、Shift+Enterで改行、Enterだけで保存のような制御もここに追加可能
+        // 今回はblurイベントで保存するので、keydownは特に何もしなくても良い
+        // もしEnterキーでの送信を防ぎたい場合は e.preventDefault() などを使う
+        if (e.key === 'Enter' && !e.shiftKey) {
+            // Enterキーだけで送信するような挙動にしたい場合、ここでblurを発火させるか保存処理を呼ぶ
+            // e.preventDefault(); // デフォルトの改行を防ぐ
+            // e.target.blur(); // blurイベントを発火させて保存
+        }
+      });
+      // ▲▲▲ 修正ここまで ▲▲▲
 
       // ▼▼▼ 操作ボタン（色変更、削除）のコンテナ (ここから変更) ▼▼▼
       const actionsDiv = document.createElement('div');
@@ -503,11 +527,10 @@ header {
       leftActions.className = 'note-action-left';
 
       const colorButtonContainer = document.createElement('div'); // ボタンとIDをまとめるコンテナ
+      colorButtonContainer.className = 'color-button-container'; // CSSでスタイル指定するためクラス追加
       const colorButton = document.createElement('button');
       colorButton.className = 'icon-button color-button'; // 新しいクラス名
       colorButton.title = '色を変更';
-      // colorButton.innerHTML = '⬜'; // 四角いアイコン（環境依存注意）
-      // より確実に四角を表示するため、空のbuttonにCSSでスタイル付け
       colorButton.onclick = (e) => {
           e.stopPropagation();
           openColorPicker(noteData.id, noteDiv);
@@ -527,7 +550,6 @@ header {
       rightActions.className = 'note-action-right';
 
       const deleteButton = document.createElement('button');
-      // クラス名を変更 (delete-button は維持しつつ、汎用クラスも追加)
       deleteButton.className = 'text-button delete-button';
       deleteButton.textContent = '削除';
       deleteButton.title = '削除';
@@ -551,7 +573,6 @@ header {
       container.appendChild(noteDiv);
       notesOnBoard[noteData.id] = { element: noteDiv, data: noteData };
     }
-
     // ★ 新しい付箋を追加する関数 (FABボタンから呼び出す)
     function addNote() {
       // デフォルト値で新しい付箋データを作成
