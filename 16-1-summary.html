@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>summery.png 背景表示 (body内スタイル)</title>
+    <style>
+        /* HTMLとBODY要素の基本的なスタイル（余白削除、高さ・幅100%）は
+           bodyのインラインスタイルだけでは完結しづらいため、
+           head内のstyleタグで設定するのが一般的です。 */
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            /* 画面からはみ出す部分でスクロールバーが出るのを防ぐ場合は以下のコメントを外します */
+            /* overflow: hidden; */
+        }
+    </style>
+</head>
+<body style="
+    background-image: url('summary.png');
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+
+">
+
+</body>
+</html>
